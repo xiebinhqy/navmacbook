@@ -1,472 +1,638 @@
 /**
- * 网页收藏 - 书签导航应用 (v2.0)
- * 1:1 复刻自 https://nav.iowen.cn/bookmark + 扩展功能
- * 纯前端版本，使用 localStorage 存储数据
- * 
- * 扩展功能1：多级文件夹/分类管理
- * 扩展功能2：深色/亮色主题切换
- * 扩展功能3：批量导入/导出书签
+ * Bookmark Desktop - macOS 桌面风格书签导航
+ * v3.0 - 全新 macOS 风格 UI
  */
 (function ($) {
     'use strict';
 
-    // ===== 配置常量 =====
-    const CONFIG = {
-        WALLPAPER_BASE: 'https://nav.iowen.cn/wp-content/uploads/wallpapers/images/',
-        WALLPAPER_COUNT: 30,
-        STORAGE_KEY: 'bm_data_v2',
-        DEFAULT_SEARCH: 'baidu',
-        SEARCH_ENGINES: {
-            baidu: { name: '百度', url: 'https://www.baidu.com/s?wd=', icon: 'assets/search-icons/baidu.svg' },
-            google: { name: 'Google', url: 'https://www.google.com/search?q=', icon: 'assets/search-icons/google.svg' },
-            bing: { name: 'Bing', url: 'https://www.bing.com/search?q=', icon: 'assets/search-icons/bing.svg' },
-            sogou: { name: '搜狗', url: 'https://www.sogou.com/web?query=', icon: 'assets/search-icons/sogou.svg' },
-            '360': { name: '360', url: 'https://www.so.com/s?q=', icon: 'assets/search-icons/360.svg' },
-            duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=', icon: 'assets/search-icons/duckduckgo.svg' }
-        },
-        DEFAULT_ICONS: [
-            { id: 'bm_1', name: '百度', url: 'https://www.baidu.com', icon: 'https://www.baidu.com/favicon.ico', category: 'root' },
-            { id: 'bm_2', name: 'Google', url: 'https://www.google.com', icon: 'https://www.google.com/favicon.ico', category: 'root' },
-            { id: 'bm_3', name: 'B站', url: 'https://www.bilibili.com', icon: 'https://www.bilibili.com/favicon.ico', category: 'root' },
-            { id: 'bm_4', name: 'GitHub', url: 'https://github.com', icon: 'https://github.com/favicon.ico', category: 'root' },
-            { id: 'bm_5', name: '知乎', url: 'https://www.zhihu.com', icon: 'https://www.zhihu.com/favicon.ico', category: 'root' },
-            { id: 'bm_6', name: '微博', url: 'https://weibo.com', icon: 'https://weibo.com/favicon.ico', category: 'root' },
-            { id: 'bm_7', name: 'CSDN', url: 'https://www.csdn.net', icon: 'https://www.csdn.net/favicon.ico', category: 'root' },
-            { id: 'bm_8', name: '淘宝', url: 'https://www.taobao.com', icon: 'https://www.taobao.com/favicon.ico', category: 'root' }
-        ]
-    };
+    const STORAGE_KEY = 'bm_data_v3';
 
-    // ===== 数据模型 =====
-    // Folder: { id, name, parentId: null|string, order: number, icon: string|null }
-    // Icon (Bookmark): { id, name, url, icon, category: folderId|'root', order: number, isApp: bool, color: string, iconText: string }
+    const DEFAULT_ICONS = [
+        { id: 'bm_1', name: '百度', url: 'https://www.baidu.com', icon: 'assets/search-icons/baidu.svg', folder: 'root' },
+        { id: 'bm_2', name: 'Google', url: 'https://www.google.com', icon: 'assets/search-icons/google.svg', folder: 'root' },
+        { id: 'bm_3', name: 'B站', url: 'https://www.bilibili.com', icon: 'assets/search-icons/bing.svg', folder: 'root' },
+        { id: 'bm_4', name: 'GitHub', url: 'https://github.com', icon: 'assets/search-icons/duckduckgo.svg', folder: 'root' },
+        { id: 'bm_5', name: '知乎', url: 'https://www.zhihu.com', icon: 'assets/search-icons/sogou.svg', folder: 'root' },
+        { id: 'bm_6', name: '微博', url: 'https://weibo.com', icon: 'assets/search-icons/360.svg', folder: 'root' },
+    ];
 
-    // ===== 数据管理 =====
-    const DataStore = {
+    // ===== DataStore =====
+    const Store = {
         _data: null,
-        // ... (existing DataStore methods - omitted for brevity)
-
         init() {
-            const stored = localStorage.getItem(CONFIG.STORAGE_KEY);
-            if (stored) {
-                try { this._data = JSON.parse(stored); } catch (e) { this._data = null; }
-            }
+            try { this._data = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) {}
             if (!this._data) {
-                this._data = this._getDefaults();
+                this._data = {
+                    folders: [{ id: 'root', name: '全部', parent: null }],
+                    icons: DEFAULT_ICONS.map(i => ({...i})),
+                    settings: { theme: 'dark', wallpaper: '', blur: 0, brightness: 0 }
+                };
                 this.save();
             }
-            if (!this._data.folders) this._data.folders = [];
             if (!this._data.folders.find(f => f.id === 'root')) {
-                this._data.folders.unshift({ id: 'root', name: '全部书签', parentId: null, order: 0, icon: null });
-                this.save();
+                this._data.folders.unshift({ id: 'root', name: '全部', parent: null });
             }
             return this._data;
         },
-
-        _getDefaults() {
-            return {
-                icons: CONFIG.DEFAULT_ICONS.map(icon => ({ ...icon, order: 0 })),
-                folders: [
-                    { id: 'root', name: '全部书签', parentId: null, order: 0, icon: null }
-                ],
-                settings: {
-                    wallpaper: '', blur: 0, brightness: 0, searchEngine: 'baidu',
-                    iconSize: 60, iconRadius: 18, iconGapRow: 34, iconGapCol: 30,
-                    themeColor: '#f1404b', timeColor: '#ffffff', iconTextColor: '#ffffff'
-                }
-            };
-        },
-
-        save() { localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(this._data)); },
+        save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(this._data)); },
         get() { return this._data; },
-
         getFolders() { return this._data.folders || []; },
-        getRootFolders() { return (this._data.folders || []).filter(f => f.parentId === null || f.parentId === 'root'); },
-        getChildFolders(parentId) { return (this._data.folders || []).filter(f => f.parentId === parentId); },
-        getFolder(id) { return (this._data.folders || []).find(f => f.id === id); },
+        getRootFolders() { return this._data.folders.filter(f => f.parent === null || f.parent === 'root'); },
+        getChildFolders(pid) { return this._data.folders.filter(f => f.parent === pid); },
+        getFolder(id) { return this._data.folders.find(f => f.id === id); },
 
-        getFolderPath(folderId) {
-            const path = [];
-            let current = this.getFolder(folderId);
-            while (current && current.id !== 'root') { path.unshift(current); current = this.getFolder(current.parentId); }
-            return path;
+        addFolder(f) {
+            f.id = 'f_' + Date.now() + '_' + Math.random().toString(36).substr(2,4);
+            this._data.folders.push(f);
+            this.save(); return f;
         },
-
-        addFolder(folder) {
-            folder.id = 'folder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            folder.order = (this._data.folders || []).length;
-            if (!this._data.folders) this._data.folders = [];
-            this._data.folders.push(folder);
-            this.save(); return folder;
-        },
-
         updateFolder(id, data) {
-            const idx = (this._data.folders || []).findIndex(f => f.id === id);
+            const idx = this._data.folders.findIndex(f => f.id === id);
             if (idx > -1) { Object.assign(this._data.folders[idx], data); this.save(); }
         },
-
         removeFolder(id) {
             if (id === 'root') return;
-            const folder = this.getFolder(id);
-            const parentId = folder ? folder.parentId : 'root';
-            this._data.icons.forEach(icon => { if (icon.category === id) icon.category = parentId || 'root'; });
-            const children = this.getChildFolders(id);
-            children.forEach(child => this.removeFolder(child.id));
+            const f = this.getFolder(id);
+            const pid = f ? f.parent : 'root';
+            this._data.icons.forEach(ic => { if (ic.folder === id) ic.folder = pid || 'root'; });
+            this.getChildFolders(id).forEach(c => this.removeFolder(c.id));
             this._data.folders = this._data.folders.filter(f => f.id !== id);
             this.save();
         },
 
-        getIcons(folderId) { const cat = folderId || 'root'; return (this._data.icons || []).filter(i => i.category === cat); },
+        getIcons(folderId) { const f = folderId || 'root'; return this._data.icons.filter(i => i.folder === f); },
         getAllIcons() { return this._data.icons || []; },
-
-        addIcon(icon) {
-            icon.id = 'icon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            if (!icon.order) icon.order = (this._data.icons || []).length;
-            this._data.icons.push(icon); this.save(); return icon;
+        addIcon(ic) {
+            ic.id = 'ic_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+            this._data.icons.push(ic);
+            this.save(); return ic;
         },
-
         removeIcon(id) { this._data.icons = this._data.icons.filter(i => i.id !== id); this.save(); },
-
         updateIcon(id, data) {
             const idx = this._data.icons.findIndex(i => i.id === id);
             if (idx > -1) { Object.assign(this._data.icons[idx], data); this.save(); }
         },
-
-        updateSettings(settings) { Object.assign(this._data.settings, settings); this.save(); },
         getSettings() { return this._data.settings; },
+        updateSettings(s) { Object.assign(this._data.settings, s); this.save(); },
 
         reorderIcons(icons) {
-            icons.forEach((icon, idx) => icon.order = idx);
-            this._data.icons = [...icons, ...this._data.icons.filter(i => !icons.find(ic => ic.id === i.id))];
+            icons.forEach((ic, i) => ic.order = i);
+            this._data.icons = [...icons, ...this._data.icons.filter(ic => !icons.find(x => x.id === ic.id))];
             this.save();
         }
     };
 
-    // ===== 工具函数 =====
-    const Utils = {
-        padZero(n) { return n < 10 ? '0' + n : '' + n; },
-        getWallpaperUrl(index) {
-            index = index || Math.floor(Math.random() * CONFIG.WALLPAPER_COUNT) + 1;
-            return CONFIG.WALLPAPER_BASE + String(index).padStart(3, '0') + '.jpg';
+    // ===== Utils =====
+    const U = {
+        pad(n) { return n < 10 ? '0' + n : '' + n; },
+        iconText(name) {
+            if (!name) return '?';
+            const m = name.match(/[\u4e00-\u9fa5a-zA-Z0-9]/);
+            return m ? m[0].toUpperCase() : name[0].toUpperCase();
         },
-        getFaviconUrl(url) { try { const u = new URL(url); return u.origin + '/favicon.ico'; } catch (e) { return ''; } },
-        debounce(fn, delay) { let timer; return function (...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); }; },
-        getIconText(name) { if (!name) return '?'; const match = name.match(/[\u4e00-\u9fa5a-zA-Z0-9]/); return match ? match[0].toUpperCase() : name.charAt(0).toUpperCase(); },
-        generateId(prefix) { return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8); },
-
-        // 文件下载
-        downloadFile(content, filename, mimeType) {
-            const blob = new Blob([content], { type: mimeType || 'application/json' });
+        favicon(url) { try { return new URL(url).origin + '/favicon.ico'; } catch(e) { return ''; } },
+        download(content, fn, type) {
+            const blob = new Blob([content], { type: type || 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            a.href = url; a.download = fn;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
             URL.revokeObjectURL(url);
         },
-
-        // 文件上传读取
-        readFileAsText(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = e => resolve(e.target.result);
-                reader.onerror = reject;
-                reader.readAsText(file);
+        readFile(file) {
+            return new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onload = e => res(e.target.result);
+                r.onerror = rej;
+                r.readAsText(file);
             });
         }
     };
 
-    // ===== 时钟 =====
-    const Clock = {
-        init() { this.update(); setInterval(() => this.update(), 1000); },
-        update() { const now = new Date(); $('.bm-time-text .hh').text(Utils.padZero(now.getHours())); $('.bm-time-text .mm').text(Utils.padZero(now.getMinutes())); $('.bm-time-text .ss').text(Utils.padZero(now.getSeconds())); }
-    };
+    // ===== App State =====
+    let currentFolder = 'root';
+    let currentTheme = 'dark';
 
-    // ===== 壁纸 =====
-    const Wallpaper = {
-        init() { const s = DataStore.getSettings(); $('.wallpaper-img').attr('src', s.wallpaper || Utils.getWallpaperUrl()); this.applyBlur(s.blur); this.applyBrightness(s.brightness); },
-        applyBlur(val) { document.documentElement.style.setProperty('--wallpaper-blur', val + 'px'); },
-        applyBrightness(val) { document.documentElement.style.setProperty('--wallpaper-brightness', val / 100); }
-    };
+    // ===== Render Desktop =====
+    function renderDesktop(folderId) {
+        const fid = folderId || currentFolder;
+        currentFolder = fid;
+        const $grid = $('#desktopGrid');
+        $grid.empty();
 
-    // ===== 搜索 =====
-    const Search = {
-        currentEngine: 'baidu',
-        init() { const s = DataStore.getSettings(); this.currentEngine = s.searchEngine || CONFIG.DEFAULT_SEARCH; this.renderEngineIcon(); this.renderEngineDropdown(); this.bindEvents(); },
-        renderEngineIcon() { const e = CONFIG.SEARCH_ENGINES[this.currentEngine]; if (e) { $('.search-type-img').attr('src', e.icon); $('input[name="search_type"]').val(this.currentEngine); } },
-        renderEngineDropdown() { const $d = $('.search-type-dropdown'); $d.empty(); Object.keys(CONFIG.SEARCH_ENGINES).forEach(k => { const e = CONFIG.SEARCH_ENGINES[k]; $d.append('<div class="search-type-item-btn" data-engine="' + k + '"><img src="' + e.icon + '" alt="' + e.name + '" title="' + e.name + '"></div>'); }); },
-        bindEvents() {
-            const $i = $('#search-text'), $tb = $('.search-type-box'), $td = $('.search-type-dropdown'), $c = $('.search-clear'), $st = $('.search-smart-tips');
-            $tb.on('click', e => { e.stopPropagation(); $td.toggleClass('active'); });
-            $td.on('click', '.search-type-item-btn', e => { const eng = $(e.currentTarget).data('engine'); this.currentEngine = eng; this.renderEngineIcon(); $td.removeClass('active'); DataStore.updateSettings({ searchEngine: eng }); });
-            $(document).on('click', () => { $td.removeClass('active'); $st.hide(); });
-            $i.on('input', () => { const v = $i.val().trim(); v ? ($c.show(), this.showSmartTips(v)) : ($c.hide(), $st.hide()); });
-            $c.on('click', () => { $i.val('').focus(); $c.hide(); $st.hide(); });
-            $i.on('keydown', e => { if (e.key === 'Enter') { const v = $i.val().trim(); if (v) this.doSearch(v); } if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); this.navigateSmartTips(e.key === 'ArrowDown' ? 'down' : 'up'); } });
-            $st.on('click', 'li', e => { const t = $(e.currentTarget).data('text') || $(e.currentTarget).text(); $i.val(t); $st.hide(); this.doSearch(t); });
-        },
-        doSearch(q) { const e = CONFIG.SEARCH_ENGINES[this.currentEngine]; if (e) window.open(e.url + encodeURIComponent(q), '_blank'); },
-        showSmartTips(q) { const tips = DataStore.getAllIcons().map(i => i.name).filter(n => n.includes(q)).slice(0, 8); const $st = $('.search-smart-tips'); const $u = $st.find('ul'); $u.empty(); tips.forEach(t => $u.append('<li data-text="' + t + '">' + t + '</li>')); $st.toggle(tips.length > 0); },
-        navigateSmartTips(dir) { const $i = $('.search-smart-tips li'); if (!$i.length) return; let idx = $i.index($('.search-smart-tips li.current')); $i.removeClass('current'); idx = dir === 'down' ? (idx + 1) % $i.length : (idx - 1 + $i.length) % $i.length; $i.eq(idx).addClass('current'); }
-    };
+        // Folders
+        Store.getChildFolders(fid).forEach(f => {
+            const icons = Store.getIcons(f.id).slice(0, 4);
+            const $div = $('<div class="desktop-icon folder-item" data-id="' + f.id + '" data-type="folder">');
+            let inner = icons.length
+                ? '<div class="icon-wrap">' + icons.map(ic =>
+                    '<div class="mini-icon" style="background:' + (ic.color || 'rgba(255,255,255,.08)') + '">' + U.iconText(ic.name) + '</div>'
+                ).join('') + '</div>'
+                : '<div class="icon-wrap"><i class="iconfont icon-folder" style="font-size:28px;color:rgba(255,255,255,.6);"></i></div>';
+            $div.append(inner);
+            $div.append('<span class="icon-label">' + f.name + '</span>');
+            $grid.append($div);
+        });
 
-    // ===== 导航栏 =====
-    const NavBar = {
-        currentFolderId: 'root', folderStack: [],
-        init() { this.renderBreadcrumb(); this.renderFolderTree(); this.renderGrid(); this.bindEvents(); },
-        renderBreadcrumb() { const path = DataStore.getFolderPath(this.currentFolderId); const $b = $('#breadcrumb-nav'); $b.empty(); $b.append('<span class="bread-item" data-folder="root"><i class="iconfont icon-home mr-1"></i>全部书签</span>'); path.forEach(f => { $b.append('<span class="bread-sep">›</span>'); $b.append('<span class="bread-item" data-folder="' + f.id + '">' + f.name + '</span>'); }); },
-        renderFolderTree() { const $t = $('#folder-tree'); $t.empty(); DataStore.getRootFolders().forEach(f => { if (f.id === 'root') return; const a = f.id === this.currentFolderId; const c = DataStore.getChildFolders(f.id); $t.append('<div class="folder-tree-item' + (a ? ' active' : '') + '" data-folder="' + f.id + '"><span class="folder-tree-icon"><i class="iconfont icon-folder' + (c.length > 0 ? '' : '-o') + '"></i></span><span class="folder-tree-name">' + f.name + '</span><span class="folder-tree-count">' + DataStore.getIcons(f.id).length + '</span></div>'); }); },
-        renderGrid() { Icons.render(this.currentFolderId); },
-        navigateTo(folderId) { this.currentFolderId = folderId; this.renderBreadcrumb(); this.renderFolderTree(); this.renderGrid(); this.updateTopbar(); },
-        updateTopbar() { const f = DataStore.getFolder(this.currentFolderId); const n = f ? f.name : '全部书签'; if ($('#current-folder-name').length) $('#current-folder-name').text(n); },
-        bindEvents() {
-            $('#breadcrumb-nav').on('click', '.bread-item', e => { this.navigateTo($(e.currentTarget).data('folder')); });
-            $('#folder-tree').on('click', '.folder-tree-item', e => { this.navigateTo($(e.currentTarget).data('folder')); });
-            $('#btn-new-folder, #btn-sidebar-new-folder').on('click', () => { this.createFolder(); });
-        },
-        createFolder() { const n = prompt('请输入文件夹名称：'); if (!n || !n.trim()) return; DataStore.addFolder({ name: n.trim(), parentId: this.currentFolderId === 'root' ? null : this.currentFolderId, icon: null }); this.renderFolderTree(); this.renderGrid(); }
-    };
-
-    // ===== 图标网格 =====
-    const Icons = {
-        render(folderId) {
-            const $c = $('#links_slides'); $c.empty();
-            $c.append('<div class="folder-toolbar mb-2"><div class="d-flex align-items-center justify-content-between" style="padding: 0 20px;"><div id="breadcrumb-nav" class="breadcrumb-nav"></div><div class="folder-actions"><button class="btn vc-l-white btn-sm mr-2" id="btn-new-folder"><i class="iconfont icon-add-o mr-1"></i>新建文件夹</button><button class="btn vc-l-white btn-sm mr-2" id="btn-import"><i class="iconfont icon-download mr-1"></i>导入</button><button class="btn vc-l-white btn-sm" id="btn-export"><i class="iconfont icon-upload mr-1"></i>导出</button></div></div></div>');
-            NavBar.renderBreadcrumb();
-
-            const $grid = $('<div class="d-grid grid-cols-xl-10 grid-cols-lg-8 grid-cols-md-6 grid-cols-sm-4 grid-cols-3" id="icon-grid">');
-            DataStore.getChildFolders(folderId).forEach(f => $grid.append(this.createFolderItem(f)));
-            DataStore.getIcons(folderId).forEach(icon => $grid.append(this.createIconItem(icon)));
-            $c.append($grid);
-
-            if (DataStore.getChildFolders(folderId).length === 0 && DataStore.getIcons(folderId).length === 0 && folderId !== 'root') {
-                $c.append('<div class="text-center py-5" style="color:rgba(255,255,255,.6);font-size:16px;">此文件夹为空</div>');
-            }
-
-            if (typeof Sortable !== 'undefined') {
-                Sortable.create($grid[0], { animation: 150, ghostClass: 'sortable-ghost', group: 'bookmarks',
-                    onEnd: () => { const items = []; $grid.find('.links-item[data-type="icon"]').each(function () { const id = $(this).data('id'); const icon = DataStore.getAllIcons().find(i => i.id === id); if (icon) items.push(icon); }); DataStore.reorderIcons(items); },
-                    onAdd: evt => { const id = $(evt.item).data('id'); const type = $(evt.item).data('type'); if (type === 'icon') DataStore.updateIcon(id, { category: folderId || 'root' }); }
-                });
-            }
-
-            $('#btn-add-icon').off('click').on('click', () => Popup.openAdd());
-            $('#btn-import').off('click').on('click', () => ImportExport.import());
-            $('#btn-export').off('click').on('click', () => ImportExport.export());
-
-            $c.on('dblclick', '.folder-item-container', e => { this.navigateTo($(e.currentTarget).closest('.links-item').data('id')); });
-        },
-        navigateTo(fid) { NavBar.navigateTo(fid); },
-
-        createFolderItem(folder) {
-            const icons = DataStore.getIcons(folder.id).slice(0, 4);
-            const $item = $('<div class="links-item i1x1 folder-item-container" data-id="' + folder.id + '" data-type="folder">');
-            let html = icons.length > 0
-                ? '<div class="folder-content">' + icons.map(ic => '<div class="folder-item"><div class="i-body"><div class="i-font-icon" style="background:' + (ic.color || '#666') + ';font-size:10px;">' + Utils.getIconText(ic.name) + '</div></div></div>').join('') + '</div>'
-                : '<div class="i-body"><div class="i-font-icon" style="background:rgba(255,255,255,.15);"><i class="iconfont icon-folder" style="font-size:24px;"></i></div></div>';
-            $item.append(html);
-            $item.append('<span class="i-title line1">' + folder.name + '</span>');
-            $item.on('contextmenu', e => { e.preventDefault(); this.showFolderContextMenu(e, folder); });
-            return $item;
-        },
-
-        createIconItem(icon) {
-            const $item = $('<div class="links-item i1x1" data-id="' + icon.id + '" data-type="icon">');
-            const $body = $('<a class="i-body" href="' + icon.url + '" target="_blank" title="' + icon.name + '">');
-            if (icon.icon) {
-                $body.append('<img class="i-img" src="' + icon.icon + '" alt="' + icon.name + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="i-font-icon" style="display:none;">' + Utils.getIconText(icon.name) + '</div>');
-            } else if (icon.color) {
-                $body.append('<div class="i-font-icon" style="background:' + icon.color + ';">' + (icon.iconText || Utils.getIconText(icon.name)) + '</div>');
+        // Icons
+        Store.getIcons(fid).forEach(ic => {
+            const $div = $('<div class="desktop-icon" data-id="' + ic.id + '" data-type="icon">');
+            let inner = '';
+            if (ic.icon) {
+                inner = '<div class="icon-wrap"><img src="' + ic.icon + '" alt="" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'"><div class="i-font" style="display:none;background:' + (ic.color || '#666') + '">' + U.iconText(ic.name) + '</div></div>';
+            } else if (ic.color) {
+                inner = '<div class="icon-wrap"><div class="i-font" style="background:' + ic.color + '">' + (ic.iconText || U.iconText(ic.name)) + '</div></div>';
             } else {
-                $body.append('<div class="i-font-icon" style="background:#666;">' + Utils.getIconText(icon.name) + '</div>');
+                inner = '<div class="icon-wrap"><div class="i-font" style="background:#666">' + U.iconText(ic.name) + '</div></div>';
             }
-            $item.append($body);
-            $item.append('<span class="i-title line1">' + icon.name + '</span>');
-            $item.on('contextmenu', e => { e.preventDefault(); this.showIconContextMenu(e, icon); });
-            return $item;
-        },
+            $div.append(inner);
+            $div.append('<span class="icon-label">' + ic.name + '</span>');
+            $grid.append($div);
+        });
 
-        showIconContextMenu(e, icon) {
-            const $m = $('#context-menu');
-            $m.html('<div class="bm-menu-item edit-icon" data-id="' + icon.id + '"><i class="iconfont icon-edit mr-2"></i>编辑</div><div class="bm-menu-item move-icon"><i class="iconfont icon-folder mr-2"></i>移动到...</div><div class="bm-menu-item delete-icon" data-id="' + icon.id + '"><i class="iconfont icon-delete mr-2"></i>删除</div>');
-            $m.css({ top: e.clientY + 'px', left: e.clientX + 'px', display: 'block' });
-            $(document).one('click', () => $m.hide());
-            $m.find('.edit-icon').on('click', () => { $m.hide(); Popup.openEdit(icon); });
-            $m.find('.move-icon').on('click', () => { $m.hide(); this.showMoveDialog(icon); });
-            $m.find('.delete-icon').on('click', () => { $m.hide(); if (confirm('确定删除 "' + icon.name + '" 吗？')) { DataStore.removeIcon(icon.id); Icons.render(NavBar.currentFolderId); } });
-        },
+        // Folder chips in menu
+        renderFolderChips(fid);
+        renderDock();
+    }
 
-        showFolderContextMenu(e, folder) {
-            const $m = $('#context-menu');
-            $m.html('<div class="bm-menu-item rename-folder" data-id="' + folder.id + '"><i class="iconfont icon-edit mr-2"></i>重命名</div><div class="bm-menu-item delete-folder" data-id="' + folder.id + '"><i class="iconfont icon-delete mr-2"></i>删除文件夹</div>');
-            $m.css({ top: e.clientY + 'px', left: e.clientX + 'px', display: 'block' });
-            $(document).one('click', () => $m.hide());
-            $m.find('.rename-folder').on('click', () => { $m.hide(); const n = prompt('请输入新名称：', folder.name); if (n && n.trim()) { DataStore.updateFolder(folder.id, { name: n.trim() }); Icons.render(NavBar.currentFolderId); } });
-            $m.find('.delete-folder').on('click', () => { $m.hide(); if (confirm('确定删除文件夹 "' + folder.name + '" 吗？\n文件夹内的书签将移到上级文件夹。')) { DataStore.removeFolder(folder.id); Icons.render(NavBar.currentFolderId); } });
-        },
+    // ===== Render Folder Chips (Menu Center) =====
+    function renderFolderChips(fid) {
+        const $c = $('#folderChips');
+        $c.empty();
 
-        showMoveDialog(icon) {
-            const folders = DataStore.getFolders().filter(f => f.id !== 'root' && f.id !== icon.category);
-            if (folders.length === 0) { alert('没有可移动到的文件夹。请先创建文件夹。'); return; }
-            const choice = prompt('选择目标文件夹（输入数字）：\n' + folders.map((f, i) => (i + 1) + '. ' + f.name).join('\n') + '\n按取消放弃移动');
-            if (choice) { const idx = parseInt(choice) - 1; if (idx >= 0 && idx < folders.length) { DataStore.updateIcon(icon.id, { category: folders[idx].id }); Icons.render(NavBar.currentFolderId); } }
+        // Root chip
+        const $root = $('<span class="folder-chip' + (fid === 'root' ? ' active' : '') + '" data-id="root">📁 全部</span>');
+        $c.append($root);
+
+        // Path chips
+        let current = Store.getFolder(fid);
+        const path = [];
+        while (current && current.id !== 'root') {
+            path.unshift(current);
+            current = Store.getFolder(current.parent);
         }
-    };
+        path.forEach(f => {
+            $c.append('<span class="folder-chip-sep">›</span>');
+            $c.append('<span class="folder-chip' + (f.id === fid ? ' active' : '') + '" data-id="' + f.id + '">' + f.name + '</span>');
+        });
 
-    // ===== 添加/编辑图标弹窗 =====
-    const Popup = {
-        init() { this.bindEvents(); },
-        openAdd() { $('input[name="icon-id"]').val(''); $('#link-url, #link-name').val(''); $('#link-app').prop('checked', false); $('#online-icon').prop('checked', true).trigger('change'); $('.color-icon-name, .link-icon-url').val(''); $('input[name="link-color"]').val(''); $('#bm-add-icon-popup').addClass('show').css('display', 'block'); $('body').addClass('modal-open'); },
-        openEdit(icon) { $('#link-url').val(icon.url); $('#link-name').val(icon.name); $('#link-app').prop('checked', icon.isApp || false); $('input[name="icon-id"]').val(icon.id); if (icon.color) { $('#color-icon').prop('checked', true).trigger('change'); $('input[name="link-color"]').val(icon.color); $('.color-icon-name').val(icon.iconText || ''); $('.color-preview-img').css('background-color', icon.color).text(icon.iconText || Utils.getIconText(icon.name)); } else if (icon.icon && icon.icon.startsWith('http')) { $('#online-icon').prop('checked', true).trigger('change'); $('.link-icon-url').val(''); } else { $('#link-icon').prop('checked', true).trigger('change'); $('.link-icon-url').val(icon.icon || ''); } $('#bm-add-icon-popup').addClass('show').css('display', 'block'); $('body').addClass('modal-open'); },
-        close() { $('#bm-add-icon-popup').removeClass('show').css('display', 'none'); $('body').removeClass('modal-open'); $('.custom-icon-box, .add-gadget-box').removeClass('show'); $('#bm-add-icon-popup').removeClass('second'); $('.default-icon-box').css('transform', ''); },
-        bindEvents() {
-            $('[data-dismiss="modal"]').on('click', () => this.close());
-            $('.show-custom-icon-box').on('click', () => { $('#bm-add-icon-popup').addClass('second'); $('.custom-icon-box').addClass('show'); $('.default-icon-box').css('transform', 'scale(0.9)'); $('input[name="icon-id"]').val(''); });
-            $('.hide-custom-icon-box').on('click', () => { $('#bm-add-icon-popup').removeClass('second'); $('.custom-icon-box').removeClass('show'); $('.default-icon-box').css('transform', ''); });
-            $('.show-gadget-box').on('click', () => { $('#bm-add-icon-popup').addClass('second'); $('.add-gadget-box').addClass('show'); $('.default-icon-box').css('transform', 'scale(0.9)'); });
-            $('.hide-add-gadget-box').on('click', () => { $('#bm-add-icon-popup').removeClass('second'); $('.add-gadget-box').removeClass('show'); $('.default-icon-box').css('transform', ''); });
-            $('input[name="icon-type"]').on('change', e => { $('.icon-set-box').hide(); $('.icon-set-box[data-value="' + $(e.currentTarget).val() + '"]').show(); });
-            $('.icon-set-box').hide(); $('.icon-set-box[data-value="online-icon"]').show();
-            $('.icon-set-box').on('click', '.color-item', e => { const c = $(e.currentTarget).data('color'); $('input[name="link-color"]').val(c); $('.color-preview-img').css('background-color', c); });
-            $('.background-color-input').on('input', e => { const c = $(e.currentTarget).val(); $('input[name="link-color"]').val(c); $('.color-preview-img').css('background-color', c); });
-            $('.color-icon-name').on('input', e => { const v = $(e.currentTarget).val() || 'O'; $('.color-preview-img').text(v.charAt(0).toUpperCase()); });
-            $('.add-icon-btn').on('click', () => this.saveIcon());
-            $(document).on('dblclick', '.links-carousel', e => { if ($(e.target).closest('.folder-toolbar, .breadcrumb-nav, .btn').length === 0) this.openAdd(); });
-        },
-        saveIcon() {
-            const url = $('#link-url').val().trim(), name = $('#link-name').val().trim(), iconType = $('input[name="icon-type"]:checked').val(), isApp = $('#link-app').is(':checked'), iconId = $('input[name="icon-id"]').val();
-            if (!url) { alert('请输入链接地址'); return; } if (!name) { alert('请输入链接名称'); return; }
-            let data = { url, name, isApp, category: NavBar.currentFolderId || 'root', order: DataStore.getAllIcons().length };
-            switch (iconType) { case 'online-icon': data.icon = Utils.getFaviconUrl(url); break; case 'upload-icon': data.icon = ''; break; case 'color-icon': data.color = $('input[name="link-color"]').val() || '#666'; data.iconText = $('.color-icon-name').val() || Utils.getIconText(name); break; case 'link-icon': data.icon = $('.link-icon-url').val().trim() || Utils.getFaviconUrl(url); break; }
-            iconId ? DataStore.updateIcon(iconId, data) : DataStore.addIcon(data);
-            Icons.render(NavBar.currentFolderId); this.close();
+        $c.find('.folder-chip').on('click', function () {
+            renderDesktop($(this).data('id'));
+        });
+    }
+
+    // ===== Render Dock =====
+    function renderDock() {
+        const $dock = $('#dock');
+        $dock.empty();
+        const folders = Store.getRootFolders();
+        folders.forEach(f => {
+            if (f.id === 'root') return;
+            const $item = $('<div class="dock-item" data-id="' + f.id + '">');
+            $item.append('<div class="dock-icon"><i class="iconfont icon-folder" style="font-size:20px;color:rgba(255,255,255,.7);"></i></div>');
+            $item.append('<span class="dock-label">' + f.name + '</span>');
+            $dock.append($item);
+        });
+        if (folders.filter(f => f.id !== 'root').length > 0) {
+            $dock.append('<div class="dock-sep"></div>');
         }
-    };
+        $dock.append('<div class="dock-item" id="dockNewFolder"><div class="dock-icon"><i class="iconfont icon-add-o" style="font-size:20px;color:rgba(255,255,255,.7);"></i></div><span class="dock-label">新建文件夹</span></div>');
 
-    // ===== 主题管理 =====
-    const ThemeManager = {
-        currentTheme: 'dark',
-        init() { const s = localStorage.getItem('bm_theme') || 'dark'; this.currentTheme = s; this.applyTheme(s); this.bindEvents(); },
-        applyTheme(theme) { this.currentTheme = theme; $('body').removeClass('dark-mode light-mode').addClass(theme === 'dark' ? 'dark-mode' : 'light-mode'); $('#theme-toggle-btn i').attr('class', theme === 'dark' ? 'iconfont icon-moon' : 'iconfont icon-sun'); localStorage.setItem('bm_theme', theme); DataStore.updateSettings({ theme }); },
-        toggle() { this.applyTheme(this.currentTheme === 'dark' ? 'light' : 'dark'); },
-        bindEvents() { $('#theme-toggle-btn').on('click', () => this.toggle()); }
-    };
+        $dock.find('.dock-item').on('click', function () {
+            const id = $(this).data('id');
+            if (id) renderDesktop(id);
+        });
+    }
 
-    // ===== 批量导入/导出 =====
-    const ImportExport = {
-        import() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json,.html';
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                try {
-                    const content = await Utils.readFileAsText(file);
-                    if (file.name.endsWith('.json')) {
-                        this.importJSON(content);
-                    } else if (file.name.endsWith('.html')) {
-                        this.importBrowserBookmarks(content);
-                    }
-                } catch (err) {
-                    alert('导入失败：' + err.message);
-                }
-            };
-            input.click();
-        },
+    // ===== Clock =====
+    function updateClock() {
+        const d = new Date();
+        $('#clockDisplay').text(U.pad(d.getHours()) + ':' + U.pad(d.getMinutes()));
+    }
 
-        importJSON(content) {
+    // ===== Theme =====
+    function setTheme(theme) {
+        currentTheme = theme;
+        $('body').removeClass('dark-mode light-mode').addClass(theme === 'dark' ? 'dark-mode' : 'light-mode');
+        const $i = $('#themeBtn i');
+        $i.attr('class', theme === 'dark' ? 'iconfont icon-moon' : 'iconfont icon-sun');
+        localStorage.setItem('bm_theme_v3', theme);
+        Store.updateSettings({ theme });
+    }
+    function toggleTheme() { setTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+
+    // ===== Wallpaper =====
+    function setWallpaper(url) {
+        if (!url) {
+            const n = Math.floor(Math.random() * 30) + 1;
+            url = 'https://nav.iowen.cn/wp-content/uploads/wallpapers/images/' + String(n).padStart(3,'0') + '.jpg';
+        }
+        $('.wallpaper-img').attr('src', url);
+    }
+    function applyBlur(val) { document.documentElement.style.setProperty('--wp-blur', val + 'px'); }
+    function applyBrightness(val) { document.documentElement.style.setProperty('--wp-brightness', val / 100); }
+
+    // ===== Window (Finder) =====
+    let winVisible = false;
+    let winZIndex = 100;
+
+    function openWindow(title, folderId) {
+        const $win = $('#macWindow');
+        winZIndex++;
+        $win.css('z-index', winZIndex);
+        $('#winTitle').text(title);
+        const $c = $('#winContent');
+        $c.empty();
+
+        const folders = Store.getChildFolders(folderId);
+        const icons = Store.getIcons(folderId);
+
+        const $grid = $('<div class="d-grid">');
+        folders.forEach(f => {
+            $grid.append(
+                '<div class="win-icon-item" data-id="' + f.id + '" data-type="folder">' +
+                '<div class="wi-wrap"><i class="iconfont icon-folder" style="font-size:22px;color:#666;"></i></div>' +
+                '<span class="wi-label">' + f.name + '</span></div>'
+            );
+        });
+        icons.forEach(ic => {
+            let img = ic.icon
+                ? '<img src="' + ic.icon + '" alt="" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'"><div class="wi-font" style="display:none;background:' + (ic.color || '#666') + '">' + U.iconText(ic.name) + '</div>'
+                : '<div class="wi-font" style="background:' + (ic.color || '#666') + '">' + U.iconText(ic.name) + '</div>';
+            $grid.append(
+                '<div class="win-icon-item" data-id="' + ic.id + '" data-type="icon" data-url="' + (ic.url || '') + '">' +
+                '<div class="wi-wrap">' + img + '</div>' +
+                '<span class="wi-label">' + ic.name + '</span></div>'
+            );
+        });
+
+        $c.append($grid);
+
+        // Click handlers
+        $c.find('.win-icon-item[data-type="folder"]').on('dblclick', function () {
+            openWindow($(this).find('.wi-label').text(), $(this).data('id'));
+        });
+        $c.find('.win-icon-item[data-type="icon"]').on('dblclick', function () {
+            const url = $(this).data('url');
+            if (url) window.open(url, '_blank');
+        });
+
+        // Position
+        if (!winVisible) {
+            const w = Math.min(700, $(window).width() - 60);
+            const h = Math.min(450, $(window).height() - 120);
+            $win.css({ top: Math.max(60, ($(window).height() - h) / 2), left: Math.max(20, ($(window).width() - w) / 2), width: w, height: h });
+        }
+        $win.addClass('show');
+        winVisible = true;
+    }
+
+    function closeWindow() {
+        $('#macWindow').removeClass('show');
+        winVisible = false;
+    }
+
+    // ===== Modal =====
+    let editIconId = null;
+
+    function openModal(icon) {
+        editIconId = icon ? icon.id : null;
+        $('#modalTitle').text(icon ? '编辑书签' : '新建书签');
+        $('#mUrl').val(icon ? icon.url : '');
+        $('#mName').val(icon ? icon.name : '');
+        $('#mColor').val(icon && icon.color ? icon.color : '#007AFF');
+        $('#mIconText').val(icon ? (icon.iconText || '') : '');
+        $('#mLinkIcon').val(icon && icon.icon && !icon.icon.startsWith('http') ? icon.icon : '');
+        $('#modalOverlay').addClass('show');
+        // Set active type
+        $('#iconTypeGroup .type-btn').removeClass('active');
+        if (icon && icon.color) {
+            $('[data-type="color"]').addClass('active');
+            $('#colorGroup, #textGroup').toggle(true, false);
+        } else if (icon && icon.icon && !icon.icon.startsWith('http')) {
+            $('[data-type="text"]').addClass('active');
+            $('#colorGroup, #textGroup').toggle(false, true);
+        } else {
+            $('[data-type="url"]').addClass('active');
+            $('#colorGroup, #textGroup').hide();
+        }
+    }
+
+    function closeModal() {
+        $('#modalOverlay').removeClass('show');
+        editIconId = null;
+    }
+
+    // ===== Context Menu =====
+    function showCtxMenu(x, y, items) {
+        const $m = $('#ctxMenu');
+        $m.empty();
+        items.forEach(item => {
+            if (item.sep) {
+                $m.append('<div class="ctx-sep"></div>');
+            } else {
+                $m.append('<div class="ctx-item" data-action="' + item.action + '">' + item.label + '</div>');
+            }
+        });
+        $m.css({ top: y + 'px', left: x + 'px' });
+        $m.addClass('show');
+        $(document).one('click', () => $m.removeClass('show'));
+    }
+
+    // ===== Import/Export =====
+    function doImport() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,.html';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
             try {
-                const data = JSON.parse(content);
-                let count = 0;
-                if (data.icons && Array.isArray(data.icons)) {
-                    data.icons.forEach(ic => { DataStore.addIcon({ name: ic.name, url: ic.url, icon: ic.icon, category: ic.category || 'root', color: ic.color, iconText: ic.iconText }); count++; });
+                const content = await U.readFile(file);
+                if (file.name.endsWith('.json')) {
+                    const data = JSON.parse(content);
+                    if (data.icons) data.icons.forEach(ic => Store.addIcon({ name: ic.name, url: ic.url, icon: ic.icon, folder: ic.folder || 'root', color: ic.color }));
+                    if (data.folders) data.folders.forEach(f => { if (f.id !== 'root') Store.addFolder({ name: f.name, parent: f.parent || null }); });
+                } else {
+                    const doc = new DOMParser().parseFromString(content, 'text/html');
+                    let count = 0;
+                    (function proc(list, pf) {
+                        $(list).find('> DT').each(function () {
+                            const $h = $(this).children('H3'), $a = $(this).children('A');
+                            if ($h.length) {
+                                const folder = Store.addFolder({ name: $h.text().trim(), parent: pf === 'root' ? null : pf });
+                                const $dl = $(this).children('DL');
+                                if ($dl.length) proc($dl[0], folder.id);
+                            } else if ($a.length) {
+                                const url = $a.attr('href') || '';
+                                if (url && !url.startsWith('place:')) { Store.addIcon({ name: $a.text().trim() || '未命名', url, icon: U.favicon(url), folder: pf || 'root' }); count++; }
+                            }
+                        });
+                    })($(doc).find('DL').first(), 'root');
+                    alert('导入完成！共 ' + count + ' 个书签');
                 }
-                if (data.folders && Array.isArray(data.folders)) {
-                    data.folders.forEach(f => { if (f.id !== 'root') DataStore.addFolder({ name: f.name, parentId: f.parentId || null }); });
-                }
-                Icons.render(NavBar.currentFolderId);
-                alert('成功导入 ' + count + ' 个书签！');
-            } catch (e) {
-                alert('JSON 格式错误：' + e.message);
-            }
-        },
+                renderDesktop(currentFolder);
+            } catch(err) { alert('导入失败：' + err.message); }
+        };
+        input.click();
+    }
 
-        importBrowserBookmarks(htmlContent) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlContent, 'text/html');
-            let count = 0;
-            const processList = (list, parentCategory) => {
-                $(list).find('> DT').each(function () {
-                    const $dt = $(this);
-                    const $h3 = $dt.children('H3');
-                    const $a = $dt.children('A');
-                    if ($h3.length) {
-                        const folderName = $h3.text().trim();
-                        const folder = DataStore.addFolder({ name: folderName, parentId: parentCategory === 'root' ? null : parentCategory });
-                        const $dl = $dt.children('DL');
-                        if ($dl.length) processList($dl[0], folder.id);
-                    } else if ($a.length) {
-                        const name = $a.text().trim() || '未命名';
-                        const url = $a.attr('href') || '';
-                        if (url && !url.startsWith('place:')) {
-                            DataStore.addIcon({ name, url, icon: Utils.getFaviconUrl(url), category: parentCategory || 'root' });
-                            count++;
-                        }
+    function doExport() {
+        const data = Store.get();
+        const out = {
+            version: '3.0', exportDate: new Date().toISOString(),
+            folders: data.folders.filter(f => f.id !== 'root').map(f => ({ name: f.name, parent: f.parent })),
+            icons: data.icons.map(ic => ({ name: ic.name, url: ic.url, icon: ic.icon, folder: ic.folder, color: ic.color, iconText: ic.iconText }))
+        };
+        U.download(JSON.stringify(out, null, 2), 'bookmarks-backup-' + new Date().toISOString().slice(0,10) + '.json');
+    }
+
+    // ===== Search =====
+    function searchBookmarks(q) {
+        if (!q.trim()) { $('#searchTips').removeClass('show'); return; }
+        const results = Store.getAllIcons().filter(ic => ic.name.includes(q)).slice(0, 8);
+        const $ul = $('#searchTips ul');
+        $ul.empty();
+        results.forEach(ic => {
+            $ul.append('<li class="st-item" data-url="' + (ic.url || '') + '">' + ic.name + '</li>');
+        });
+        $('#searchTips').toggleClass('show', results.length > 0);
+    }
+
+    // ===== Init =====
+    function init() {
+        Store.init();
+
+        // Load settings
+        const s = Store.getSettings();
+        currentTheme = s.theme || 'dark';
+        setTheme(currentTheme);
+        setWallpaper(s.wallpaper);
+        applyBlur(s.blur || 0);
+        applyBrightness(s.brightness || 0);
+
+        // Render
+        renderDesktop('root');
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Wallpaper image onerror
+        $('.wallpaper-img').on('error', function () {
+            $(this).attr('src', 'https://nav.iowen.cn/wp-content/uploads/wallpapers/images/001.jpg');
+        });
+
+        // ===== Menu Events =====
+        $('#menuNewFolder').on('click', () => {
+            const name = prompt('文件夹名称：');
+            if (name && name.trim()) {
+                Store.addFolder({ name: name.trim(), parent: currentFolder === 'root' ? null : currentFolder });
+                renderDesktop(currentFolder);
+            }
+        });
+
+        $('#menuNewBookmark').on('click', () => openModal(null));
+
+        // ===== Desktop Click =====
+        $('#desktopGrid').on('dblclick', '.desktop-icon[data-type="folder"]', function () {
+            const id = $(this).data('id');
+            const f = Store.getFolder(id);
+            if (f) openWindow(f.name, id);
+        });
+
+        $('#desktopGrid').on('dblclick', '.desktop-icon[data-type="icon"]', function () {
+            const id = $(this).data('id');
+            const ic = Store.getAllIcons().find(i => i.id === id);
+            if (ic && ic.url) window.open(ic.url, '_blank');
+        });
+
+        // ===== Desktop Right Click =====
+        $('#desktopGrid').on('contextmenu', '.desktop-icon', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = $(this).data('id');
+            const type = $(this).data('type');
+            const x = e.clientX, y = e.clientY;
+
+            if (type === 'folder') {
+                showCtxMenu(x, y, [
+                    { label: '打开', action: 'open' },
+                    { label: '重命名', action: 'rename' },
+                    { label: '删除文件夹', action: 'delete' },
+                ]);
+                $('#ctxMenu .ctx-item').off('click').on('click', function () {
+                    const act = $(this).data('action');
+                    if (act === 'open') {
+                        const f = Store.getFolder(id);
+                        if (f) openWindow(f.name, id);
+                    } else if (act === 'rename') {
+                        const f = Store.getFolder(id);
+                        const n = prompt('新名称：', f ? f.name : '');
+                        if (n && n.trim()) { Store.updateFolder(id, { name: n.trim() }); renderDesktop(currentFolder); }
+                    } else if (act === 'delete') {
+                        if (confirm('确定删除此文件夹？')) { Store.removeFolder(id); renderDesktop(currentFolder); }
                     }
                 });
-            };
-            const $dl = $(doc).find('DL').first();
-            if ($dl.length) processList($dl[0], 'root');
-            Icons.render(NavBar.currentFolderId);
-            alert('成功导入 ' + count + ' 个书签！');
-        },
+            } else {
+                showCtxMenu(x, y, [
+                    { label: '编辑', action: 'edit' },
+                    { label: '删除', action: 'delete' },
+                ]);
+                $('#ctxMenu .ctx-item').off('click').on('click', function () {
+                    const act = $(this).data('action');
+                    const ic = Store.getAllIcons().find(i => i.id === id);
+                    if (act === 'edit' && ic) {
+                        openModal(ic);
+                    } else if (act === 'delete') {
+                        if (confirm('确定删除？')) { Store.removeIcon(id); renderDesktop(currentFolder); }
+                    }
+                });
+            }
+        });
 
-        export() {
-            const data = DataStore.get();
-            const exportData = {
-                version: '2.0',
-                exportDate: new Date().toISOString(),
-                folders: data.folders.filter(f => f.id !== 'root').map(f => ({ name: f.name, parentId: f.parentId })),
-                icons: data.icons.map(ic => ({ name: ic.name, url: ic.url, icon: ic.icon, category: ic.category, color: ic.color, iconText: ic.iconText, isApp: ic.isApp }))
-            };
-            const json = JSON.stringify(exportData, null, 2);
-            const filename = 'bookmarks-backup-' + new Date().toISOString().slice(0, 10) + '.json';
-            Utils.downloadFile(json, filename, 'application/json');
+        // ===== Desktop Background Right Click =====
+        $('#desktopGrid').on('contextmenu', function (e) {
+            if ($(e.target).closest('.desktop-icon').length) return;
+            e.preventDefault();
+            showCtxMenu(e.clientX, e.clientY, [
+                { label: '新建文件夹', action: 'newFolder' },
+                { label: '新建书签', action: 'newBookmark' },
+            ]);
+            $('#ctxMenu .ctx-item').off('click').on('click', function () {
+                const act = $(this).data('action');
+                if (act === 'newFolder') {
+                    const n = prompt('文件夹名称：');
+                    if (n && n.trim()) { Store.addFolder({ name: n.trim(), parent: currentFolder === 'root' ? null : currentFolder }); renderDesktop(currentFolder); }
+                } else if (act === 'newBookmark') {
+                    openModal(null);
+                }
+            });
+        });
+
+        // ===== Window Controls =====
+        $('#winClose').on('click', closeWindow);
+        $('#winMinimize').on('click', () => { $('#macWindow').removeClass('show'); winVisible = false; });
+        $('#winMaximize').on('click', function () {
+            const $w = $('#macWindow');
+            if ($w.hasClass('fullscreen')) {
+                $w.removeClass('fullscreen');
+            } else {
+                $w.addClass('fullscreen');
+            }
+        });
+
+        // ===== Theme =====
+        $('#themeBtn').on('click', toggleTheme);
+
+        // ===== Import/Export =====
+        $('#importBtn').on('click', doImport);
+        $('#exportBtn').on('click', doExport);
+
+        // ===== Search =====
+        $('#menuSearch').on('input', function () { searchBookmarks($(this).val()); });
+        $('#menuSearch').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                const q = $(this).val().trim();
+                if (q) {
+                    const results = Store.getAllIcons().filter(ic => ic.name.includes(q));
+                    if (results.length > 0 && results[0].url) window.open(results[0].url, '_blank');
+                }
+                $('#searchTips').removeClass('show');
+            }
+            if (e.key === 'Escape') $('#searchTips').removeClass('show');
+        });
+        $('#searchTips').on('click', '.st-item', function () {
+            const url = $(this).data('url');
+            if (url) window.open(url, '_blank');
+            $('#searchTips').removeClass('show');
+        });
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.search-box, #searchTips').length) $('#searchTips').removeClass('show');
+        });
+
+        // ===== Dock =====
+        $('#dockNewFolder').on('click', () => {
+            const n = prompt('文件夹名称：');
+            if (n && n.trim()) { Store.addFolder({ name: n.trim(), parent: null }); renderDesktop(currentFolder); }
+        });
+
+        // ===== Modal =====
+        $('#iconTypeGroup .type-btn').on('click', function () {
+            $('#iconTypeGroup .type-btn').removeClass('active');
+            $(this).addClass('active');
+            const t = $(this).data('type');
+            $('#colorGroup, #textGroup').hide();
+            if (t === 'color') $('#colorGroup').show();
+            else if (t === 'text') $('#textGroup').show();
+        });
+
+        $('#modalSave').on('click', function () {
+            const url = $('#mUrl').val().trim();
+            const name = $('#mName').val().trim();
+            if (!url) { alert('请输入链接地址'); return; }
+            if (!name) { alert('请输入链接名称'); return; }
+
+            const type = $('#iconTypeGroup .type-btn.active').data('type');
+            let iconData = { name, url, folder: currentFolder || 'root' };
+            if (type === 'color') {
+                iconData.color = $('#mColor').val();
+                iconData.iconText = $('#mIconText').val() || U.iconText(name);
+            } else if (type === 'text') {
+                iconData.icon = $('#mLinkIcon').val().trim() || U.favicon(url);
+            } else {
+                iconData.icon = U.favicon(url);
+            }
+
+            if (editIconId) {
+                Store.updateIcon(editIconId, iconData);
+            } else {
+                Store.addIcon(iconData);
+            }
+            closeModal();
+            renderDesktop(currentFolder);
+        });
+
+        $('#modalCancel').on('click', closeModal);
+        $('#modalOverlay').on('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        // ===== Window dragging =====
+        let drag = false, dx, dy, $win = $('#macWindow');
+        $win.find('.win-titlebar').on('mousedown', function (e) {
+            if ($(e.target).closest('.traffic-lights').length) return;
+            drag = true;
+            dx = e.clientX - $win.offset().left;
+            dy = e.clientY - $win.offset().top;
+        });
+        $(document).on('mousemove', function (e) {
+            if (!drag) return;
+            $win.css({ left: e.clientX - dx + 'px', top: e.clientY - dy + 'px' });
+        }).on('mouseup', function () { drag = false; });
+
+        // ===== Sortable =====
+        if (typeof Sortable !== 'undefined') {
+            Sortable.create(document.getElementById('desktopGrid'), {
+                animation: 150, ghostClass: 'sortable-ghost',
+                onEnd: function () {
+                    const items = [];
+                    $('#desktopGrid .desktop-icon[data-type="icon"]').each(function () {
+                        const id = $(this).data('id');
+                        const ic = Store.getAllIcons().find(i => i.id === id);
+                        if (ic) items.push(ic);
+                    });
+                    if (items.length) Store.reorderIcons(items);
+                }
+            });
         }
-    };
 
-    // ===== 登录弹窗 =====
-    const LoginModal = {
-        init() {
-            setTimeout(() => { if (!localStorage.getItem('bm_login_dismissed')) $('.bm-login-modal').addClass('show').css('display', 'block'); }, 3000);
-            $('.bm-login-modal .close').on('click', () => { $('.bm-login-modal').removeClass('show').css('display', 'none'); localStorage.setItem('bm_login_dismissed', '1'); });
-            $('.login-btn').on('click', () => { alert('登录功能将在后续扩展中实现。\n当前为本地存储模式，所有数据保存在浏览器中。'); });
-        }
-    };
+        console.log('✅ Bookmark Desktop v3.0 macOS风格已启动');
+    }
 
-    // ===== 应用初始化 =====
-    const App = {
-        init() {
-            DataStore.init();
-            NavBar.init();
-            setTimeout(() => $('.full-loading').addClass('load-out'), 300);
-            ThemeManager.init();
-            Clock.init();
-            Wallpaper.init();
-            Search.init();
-            Popup.init();
-            LoginModal.init();
-            const s = DataStore.getSettings();
-            if (s.themeColor) { document.documentElement.style.setProperty('--theme-color', s.themeColor); document.documentElement.style.setProperty('--hover-color', s.themeColor + 'dd'); }
-            console.log('📑 网页收藏导航 v2.0'); console.log('💾 数据存储在 localStorage，key: ' + CONFIG.STORAGE_KEY);
-        }
-    };
-
-    if (typeof $ !== 'undefined') { $(document).ready(() => App.init()); }
+    // ===== Bootstrap =====
+    if (typeof $ !== 'undefined') $(document).ready(init);
     else {
         document.addEventListener('DOMContentLoaded', () => {
-            const check = setInterval(() => { if (typeof $ !== 'undefined' && typeof jQuery !== 'undefined') { clearInterval(check); $(document).ready(() => App.init()); } }, 100);
+            const check = setInterval(() => { if (typeof $ !== 'undefined') { clearInterval(check); $(document).ready(init); } }, 100);
         });
     }
 })(typeof jQuery !== 'undefined' ? jQuery : null);
