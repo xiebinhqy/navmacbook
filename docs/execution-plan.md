@@ -1,0 +1,477 @@
+# 书签管理网站复刻项目 - 执行计划
+
+## 项目概述
+
+**项目名称**: 书签管理网站 (Nav Bookmark)
+**参考网站**: https://nav.iowen.cn/bookmark
+**项目目标**: 完全复刻参考网站的全部功能，为后期功能扩展奠定基础
+
+---
+
+## 一、功能分析
+
+基于对参考网站的分析，需要实现以下核心功能：
+
+### 1.1 核心功能清单
+
+| 序号 | 功能模块 | 功能描述 | 优先级 |
+|------|----------|----------|--------|
+| 1 | 书签展示 | 以图标网格形式展示书签，支持分类、多页显示 | P0 |
+| 2 | 实时时钟 | 页面顶部显示当前时间，格式 HH:mm:ss | P0 |
+| 3 | 搜索功能 | 支持书签搜索、搜索词联想、搜索历史 | P0 |
+| 4 | 登录系统 | 用户登录、注册、退出功能 | P1 |
+| 5 | 设置面板 | 弹窗式设置面板，包含多个配置项 | P0 |
+| 6 | 主题/壁纸 | 支持自定义背景壁纸 | P1 |
+| 7 | 图标管理 | 图标大小、圆角等可调节 | P1 |
+| 8 | 搜索引擎 | 支持多种搜索引擎切换 | P1 |
+| 9 | 数据安全 | 数据备份、恢复功能 | P2 |
+| 10 | 响应式设计 | 适配不同屏幕尺寸 | P1 |
+
+### 1.2 详细功能说明
+
+#### 1.2.1 书签展示模块
+- 网格布局展示书签图标
+- 每个书签包含：图标（favicon）、名称、链接地址
+- 支持分页显示（底部有分页指示器）
+- 图标悬停效果
+- 点击图标跳转到对应网站
+
+#### 1.2.2 实时时钟模块
+- 显示在页面顶部居中位置
+- 格式：HH:mm:ss（24小时制）
+- 每秒自动更新
+- 支持颜色自定义
+- 支持显示/隐藏开关
+
+#### 1.2.3 搜索功能模块
+- 搜索框位于时钟下方
+- 支持书签名称模糊搜索
+- 搜索词联想（输入时自动提示）
+- 搜索历史记录
+- 支持回车搜索
+- 搜索结果高亮显示
+
+#### 1.2.4 设置面板模块
+设置弹窗包含以下子模块：
+- **基础设置**: 用户信息、退出登录
+- **时间设置**: 显示时间开关、时间颜色选择器
+- **搜索设置**: 启用搜索、搜索词联想、搜索历史开关
+- **图标设置**: 图标大小滑块、图标圆角滑块
+- **壁纸设置**: 自定义壁纸上传/选择
+- **搜索引擎**: 搜索引擎列表选择
+- **数据安全**: 备份、恢复、隐私设置
+- **关于我们**: 版本信息、联系方式
+
+---
+
+## 二、技术选型
+
+### 2.1 技术栈
+
+| 技术类别 | 选型 | 说明 |
+|----------|------|------|
+| 前端框架 | Vue 3 + TypeScript | 组件化开发，类型安全 |
+| 构建工具 | Vite | 快速构建，热更新 |
+| UI 框架 | Element Plus | 丰富的组件库，符合设计风格 |
+| 状态管理 | Pinia | 轻量级状态管理 |
+| 路由 | Vue Router | 单页应用路由 |
+| CSS 方案 | Tailwind CSS | 快速样式开发 |
+| 后端 | Node.js + Express | 轻量级后端服务 |
+| 数据库 | SQLite | 轻量级，适合个人项目 |
+| 认证 | JWT | JSON Web Token 认证 |
+
+### 2.2 项目结构
+
+```
+navmacbook/
+├── docs/                    # 文档目录
+│   └── execution-plan.md   # 本执行计划
+├── client/                  # 前端项目
+│   ├── src/
+│   │   ├── assets/          # 静态资源
+│   │   ├── components/      # 公共组件
+│   │   │   ├── BookmarkCard.vue     # 书签卡片组件
+│   │   │   ├── ClockDisplay.vue     # 时钟组件
+│   │   │   ├── SearchBar.vue        # 搜索栏组件
+│   │   │   ├── SettingsPanel.vue    # 设置面板组件
+│   │   │   ├── Pagination.vue       # 分页组件
+│   │   │   └── UserAvatar.vue       # 用户头像组件
+│   │   ├── views/           # 页面组件
+│   │   │   ├── HomeView.vue         # 首页
+│   │   │   ├── LoginView.vue        # 登录页
+│   │   │   ├── RegisterView.vue     # 注册页
+│   │   │   └── AdminView.vue        # 管理页
+│   │   ├── stores/          # Pinia 状态管理
+│   │   │   ├── bookmarkStore.ts     # 书签状态
+│   │   │   ├── userStore.ts         # 用户状态
+│   │   │   └── settingsStore.ts     # 设置状态
+│   │   ├── services/        # API 服务
+│   │   │   ├── api.ts               # API 请求封装
+│   │   │   ├── bookmarkService.ts   # 书签服务
+│   │   │   └── authService.ts       # 认证服务
+│   │   ├── utils/           # 工具函数
+│   │   │   ├── search.ts            # 搜索工具
+│   │   │   ├── storage.ts           # 本地存储工具
+│   │   │   └── helpers.ts           # 通用工具
+│   │   ├── types/           # 类型定义
+│   │   │   └── index.ts             # TypeScript 类型
+│   │   ├── router/          # 路由配置
+│   │   │   └── index.ts
+│   │   ├── App.vue          # 根组件
+│   │   └── main.ts          # 入口文件
+│   ├── public/              # 公共静态资源
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   └── package.json
+├── server/                  # 后端项目
+│   ├── src/
+│   │   ├── controllers/     # 控制器
+│   │   │   ├── bookmarkController.ts
+│   │   │   └── authController.ts
+│   │   ├── routes/          # 路由
+│   │   │   ├── bookmarks.ts
+│   │   │   └── auth.ts
+│   │   ├── models/          # 数据模型
+│   │   │   ├── Bookmark.ts
+│   │   │   └── User.ts
+│   │   ├── services/        # 业务逻辑
+│   │   ├── middleware/      # 中间件
+│   │   │   └── auth.ts      # JWT 验证
+│   │   ├── database/        # 数据库
+│   │   │   └── sqlite.ts
+│   │   ├── app.ts           # Express 应用
+│   │   └── server.ts        # 服务器入口
+│   ├── package.json
+│   └── tsconfig.json
+├── .gitignore
+├── package.json             # 根 package.json (workspace)
+└── README.md
+```
+
+---
+
+## 三、执行步骤
+
+### 阶段 1: 项目初始化 (预计 1-2 天)
+
+- [ ] **1.1 初始化 Git 仓库**
+  - 创建 .gitignore 文件
+  - 初始化 Git 仓库
+  
+- [ ] **1.2 创建前端项目**
+  - 使用 Vite 创建 Vue 3 + TypeScript 项目
+  - 安装 Element Plus 和 Tailwind CSS
+  - 配置 Vite 构建工具
+  - 配置 TypeScript 类型检查
+  
+- [ ] **1.3 创建后端项目**
+  - 初始化 Node.js 项目
+  - 安装 Express、SQLite 等依赖
+  - 配置 TypeScript 编译
+  
+- [ ] **1.4 设置开发环境**
+  - 配置开发服务器
+  - 设置跨域代理
+  - 配置环境变量
+
+### 阶段 2: 核心功能开发 - 前端 (预计 2-3 天)
+
+- [ ] **2.1 基础页面结构**
+  - 创建 App.vue 根组件
+  - 设置页面布局结构
+  - 实现响应式设计框架
+  
+- [ ] **2.2 时钟组件开发**
+  - 创建 ClockDisplay.vue 组件
+  - 实现实时时间显示逻辑
+  - 添加颜色自定义功能
+  - 添加显示/隐藏控制
+  
+- [ ] **2.3 搜索组件开发**
+  - 创建 SearchBar.vue 组件
+  - 实现搜索框 UI
+  - 添加搜索词联想功能
+  - 实现搜索历史记录
+  
+- [ ] **2.4 书签展示组件开发**
+  - 创建 BookmarkCard.vue 组件
+  - 实现图标网格布局
+  - 添加悬停效果
+  - 实现分页组件 Pagination.vue
+
+### 阶段 3: 设置面板开发 (预计 1-2 天)
+
+- [ ] **3.1 设置面板框架**
+  - 创建 SettingsPanel.vue 组件
+  - 实现弹窗交互逻辑
+  - 设置侧边栏导航
+  
+- [ ] **3.2 基础设置子面板**
+  - 用户信息显示
+  - 退出登录功能
+  
+- [ ] **3.3 时间设置子面板**
+  - 显示时间开关
+  - 时间颜色选择器
+  
+- [ ] **3.4 搜索设置子面板**
+  - 启用搜索开关
+  - 搜索词联想开关
+  - 搜索历史开关
+  
+- [ ] **3.5 图标设置子面板**
+  - 图标大小滑块
+  - 图标圆角滑块
+  - 实时预览功能
+
+### 阶段 4: 状态管理 (预计 1 天)
+
+- [ ] **4.1 创建 Pinia Store**
+  - 书签状态管理 bookmarkStore
+  - 用户状态管理 userStore
+  - 设置状态管理 settingsStore
+  
+- [ ] **4.2 本地存储集成**
+  - 设置持久化到 localStorage
+  - 书签数据缓存机制
+
+### 阶段 5: 后端开发 (预计 2-3 天)
+
+- [ ] **5.1 数据库设计**
+  - 设计 User 表结构
+  - 设计 Bookmark 表结构
+  - 创建数据库迁移脚本
+  
+- [ ] **5.2 API 开发**
+  - 实现用户注册/登录 API
+  - 实现书签 CRUD API
+  - 实现设置保存 API
+  
+- [ ] **5.3 认证系统**
+  - JWT Token 生成与验证
+  - 密码加密存储
+  - 中间件认证
+
+### 阶段 6: 前后端联调 (预计 1-2 天)
+
+- [ ] **6.1 API 集成**
+  - 创建 API 服务层
+  - 集成认证流程
+  - 错误处理机制
+  
+- [ ] **6.2 登录注册流程**
+  - 实现登录页面
+  - 实现注册页面
+  - 路由守卫
+
+### 阶段 7: 测试与优化 (预计 1-2 天)
+
+- [ ] **7.1 功能测试**
+  - 测试所有核心功能
+  - 修复发现的 bug
+  
+- [ ] **7.2 性能优化**
+  - 图片懒加载
+  - 代码分割
+  - 缓存优化
+  
+- [ ] **7.3 兼容性测试**
+  - 不同浏览器测试
+  - 移动端适配测试
+
+### 阶段 8: 部署准备 (预计 0.5 天)
+
+- [ ] **8.1 生产构建**
+  - 前端生产构建
+  - 后端生产配置
+  
+- [ ] **8.2 部署文档**
+  - 编写部署说明
+  - 环境变量配置说明
+
+---
+
+## 四、数据库设计
+
+### 4.1 User 表
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(100),
+  avatar VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 4.2 Bookmark 表
+```sql
+CREATE TABLE bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  url VARCHAR(255) NOT NULL,
+  favicon_url VARCHAR(255),
+  category VARCHAR(50) DEFAULT 'default',
+  sort_order INTEGER DEFAULT 0,
+  is_favorite INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### 4.3 Settings 表
+```sql
+CREATE TABLE settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  setting_key VARCHAR(50) NOT NULL,
+  setting_value TEXT,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(user_id, setting_key)
+);
+```
+
+---
+
+## 五、API 接口设计
+
+### 5.1 认证接口
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | /api/auth/register | 用户注册 |
+| POST | /api/auth/login | 用户登录 |
+| POST | /api/auth/logout | 用户退出 |
+| GET | /api/auth/profile | 获取用户信息 |
+
+### 5.2 书签接口
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | /api/bookmarks | 获取书签列表 |
+| POST | /api/bookmarks | 创建书签 |
+| PUT | /api/bookmarks/:id | 更新书签 |
+| DELETE | /api/bookmarks/:id | 删除书签 |
+| GET | /api/bookmarks/search | 搜索书签 |
+
+### 5.3 设置接口
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | /api/settings | 获取用户设置 |
+| PUT | /api/settings | 更新用户设置 |
+
+---
+
+## 六、关键实现细节
+
+### 6.1 书签图标获取
+- 使用 Google Favicon API: `https://www.google.com/s2/favicons?domain=example.com`
+- 或使用 iconify 等图标服务
+- 支持自定义图标上传
+
+### 6.2 搜索实现
+- 前端本地搜索（数据量小时）
+- 后端模糊搜索（数据量大时）
+- 搜索词联想使用 Trie 树或前缀匹配
+
+### 6.3 主题系统
+- 使用 CSS 变量实现主题切换
+- 支持深色/浅色模式
+- 壁纸支持 URL 和本地上传
+
+### 6.4 分页实现
+- 前端分页（数据量小时）
+- 后端分页（数据量大时）
+- 支持页码和每页数量设置
+
+---
+
+## 七、扩展功能预留
+
+为后期功能扩展预留以下接口和结构：
+
+1. **书签分类管理**: 支持多级分类
+2. **标签系统**: 为书签添加标签
+3. **收藏功能**: 收藏常用书签
+4. **数据同步**: 多设备数据同步
+5. **导入导出**: Chrome/Firefox 书签导入导出
+6. **API 开放**: 提供 RESTful API
+7. **插件系统**: 支持第三方插件
+8. **协作功能**: 团队共享书签
+9. **统计分析**: 书签访问统计
+10. **暗黑模式**: 深色主题
+
+---
+
+## 八、开发时间估算
+
+| 阶段 | 预计时间 |
+|------|----------|
+| 项目初始化 | 1-2 天 |
+| 前端核心功能 | 2-3 天 |
+| 设置面板 | 1-2 天 |
+| 状态管理 | 1 天 |
+| 后端开发 | 2-3 天 |
+| 前后端联调 | 1-2 天 |
+| 测试与优化 | 1-2 天 |
+| 部署准备 | 0.5 天 |
+| **总计** | **9-15 天** |
+
+---
+
+## 九、技术难点与解决方案
+
+### 9.1 难点 1: 书签图标获取
+**问题**: 不同网站的图标格式和路径不同
+**解决方案**: 使用 Google Favicon API 统一获取，失败时使用默认图标
+
+### 9.2 难点 2: 搜索性能
+**问题**: 大量书签时搜索性能下降
+**解决方案**: 使用索引、缓存、增量搜索优化
+
+### 9.3 难点 3: 设置持久化
+**问题**: 用户设置需要在页面间保持
+**解决方案**: 使用 localStorage + Pinia 持久化插件
+
+### 9.4 难点 4: 响应式布局
+**问题**: 不同屏幕尺寸下图标布局
+**解决方案**: 使用 CSS Grid + 媒体查询实现自适应
+
+---
+
+## 十、参考资源
+
+1. **参考网站**: https://nav.iowen.cn/bookmark
+2. **Vue 3 文档**: https://vuejs.org/
+3. **Element Plus**: https://element-plus.org/
+4. **Vite 文档**: https://vitejs.dev/
+5. **Pinia 文档**: https://pinia.vuejs.org/
+
+---
+
+## 附录
+
+### A. 配色方案
+- 主背景: 深色渐变 (深蓝到深紫)
+- 卡片背景: 半透明深色
+- 文字颜色: 白色/浅灰色
+- 强调色: 红色/橙色
+
+### B. 字体方案
+- 中文字体: -apple-system, BlinkMacSystemFont, 'Segoe UI'
+- 数字字体: 等宽字体
+
+### C. 动画效果
+- 卡片悬停: 缩放 + 阴影
+- 弹窗出现: 淡入 + 缩放
+- 页面切换: 淡入淡出
+
+---
+
+*文档版本: v1.0*
+*创建时间: 2026-07-17*
+*最后更新: 2026-07-17*
