@@ -860,6 +860,37 @@
         }
     };
 
+    // ===== 主题管理 =====
+    const ThemeManager = {
+        currentTheme: 'dark',
+
+        init() {
+            const saved = localStorage.getItem('bm_theme') || 'dark';
+            this.currentTheme = saved;
+            this.applyTheme(saved);
+            this.bindEvents();
+        },
+
+        applyTheme(theme) {
+            this.currentTheme = theme;
+            $('body').removeClass('dark-mode light-mode');
+            $('body').addClass(theme === 'dark' ? 'dark-mode' : 'light-mode');
+            const $btn = $('#theme-toggle-btn i');
+            $btn.attr('class', theme === 'dark' ? 'iconfont icon-moon' : 'iconfont icon-sun');
+            localStorage.setItem('bm_theme', theme);
+            DataStore.updateSettings({ theme: theme });
+        },
+
+        toggle() {
+            const newTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+            this.applyTheme(newTheme);
+        },
+
+        bindEvents() {
+            $('#theme-toggle-btn').on('click', () => this.toggle());
+        }
+    };
+
     // ===== 登录弹窗 =====
     const LoginModal = {
         init() {
@@ -888,6 +919,7 @@
 
             setTimeout(() => $('.full-loading').addClass('load-out'), 300);
 
+            ThemeManager.init();
             Clock.init();
             Wallpaper.init();
             Search.init();

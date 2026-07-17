@@ -123,6 +123,80 @@
         @media (max-width: 767.98px) {
             .bm-sidebar { display: none; }
         }
+
+        /* 主题切换按钮 */
+        .theme-toggle-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,.15);
+            backdrop-filter: blur(5px);
+            color: #fff;
+            font-size: 16px;
+            transition: all .3s;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,.2);
+        }
+        .theme-toggle-btn:hover {
+            background: rgba(255,255,255,.25);
+            transform: scale(1.1);
+        }
+        body.dark-mode .theme-toggle-btn {
+            background: rgba(255,255,255,.1);
+        }
+
+        /* 亮色主题覆盖 */
+        body.light-mode .bm-sidebar {
+            background: rgba(255,255,255,.5);
+        }
+        body.light-mode .folder-tree-item {
+            color: rgba(0,0,0,.7);
+            text-shadow: none;
+        }
+        body.light-mode .folder-tree-item:hover {
+            background: rgba(0,0,0,.08);
+        }
+        body.light-mode .folder-tree-item.active {
+            background: rgba(var(--theme-color-rgb), .15);
+            color: var(--theme-color);
+        }
+        body.light-mode .folder-tree-count {
+            background: rgba(0,0,0,.08);
+        }
+        body.light-mode .breadcrumb-nav {
+            color: rgba(0,0,0,.7);
+            text-shadow: none;
+        }
+        body.light-mode .breadcrumb-nav .bread-item:hover {
+            background: rgba(0,0,0,.08);
+        }
+        body.light-mode .sidebar-header span {
+            color: rgba(0,0,0,.6) !important;
+            text-shadow: none !important;
+        }
+        body.light-mode .bm-time-text {
+            color: #333 !important;
+        }
+        body.light-mode .bm-search-box {
+            --font-color: #333;
+        }
+        body.light-mode .i-title {
+            color: #333 !important;
+            filter: none !important;
+        }
+
+        /* 主题切换过渡 */
+        body, body * {
+            transition: background-color .3s, color .3s, border-color .3s, box-shadow .3s;
+        }
     </style>
 </head>
 <body class="wp-singular page-template page-template-template page-template-bookmark page-template-templatebookmark-php page page-id-1736 wp-theme-onenav">
@@ -411,6 +485,11 @@
         <div class="folder-name"><div class="input-name"><input type="text" class="folder-title-input" value="" placeholder="文件夹名称"></div></div>
         <div class="folder-modal no-scrollbar" id="folder-modal"><div class="d-grid" id="folder-grid"></div></div>
     </div>
+
+    <!-- 主题切换按钮 -->
+    <button class="theme-toggle-btn" id="theme-toggle-btn" title="切换主题">
+        <i class="iconfont icon-moon"></i>
+    </button>
 
     <!-- 第三方库 -->
     <script src="https://nav.iowen.cn/wp-content/plugins/iotab/assets/js/jquery.min.js"></script>
