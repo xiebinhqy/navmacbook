@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <link rel="shortcut icon" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.svg">
+    <title>新标签页</title>
+    <meta name="description" content="自定义新标签页上的网站和壁纸以及搜索引擎,创建和编辑属于您自己的浏览器标签页,常用网址随心订制">
+    <meta name="keywords" content="新标签页">
+    <link rel="stylesheet" href="css/iconfont.css">
+    <link rel="stylesheet" href="css/cropper.min.css">
+    <link rel="stylesheet" href="css/bm.css">
+    <style>
+        /* 本地覆盖样式 - 用于无法从远程加载时的备选 */
+        :root {
+            --time-color: #ffffff;
+            --icon-size: 60px;
+            --icon-radius: 18px;
+            --icon-gap-row: 34px;
+            --icon-gap-col: 30px;
+            --icon-text-color: #ffffff;
+            --wallpaper-blur: 0px;
+            --wallpaper-brightness: 0;
+            --theme-color: #f1404b;
+            --theme-color-rgb: 241, 64, 75;
+            --hover-color: #d93a7a;
+            --focus-shadow-color: rgba(217, 58, 122, 0.6);
+        }
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, "Microsoft YaHei", sans-serif;
+        }
+        .search-type-item-btn img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+        .default-icon-item .default-icon-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 文件夹侧边栏样式 */
+        .bm-sidebar {
+            background: rgba(0,0,0,.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .sidebar-tree {
+            overflow-y: auto;
+        }
+        .sidebar-tree::-webkit-scrollbar { width: 3px; }
+        .sidebar-tree::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+        .folder-tree-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: rgba(255,255,255,.8);
+            transition: all .2s;
+            font-size: 13px;
+            margin-bottom: 2px;
+            text-shadow: 0 1px 3px rgba(0,0,0,.3);
+        }
+        .folder-tree-item:hover {
+            background: rgba(255,255,255,.15);
+        }
+        .folder-tree-item.active {
+            background: rgba(var(--theme-color-rgb), .3);
+            color: #fff;
+        }
+        .folder-tree-icon {
+            width: 24px;
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-right: 6px;
+            text-align: center;
+        }
+        .folder-tree-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .folder-tree-count {
+            background: rgba(255,255,255,.1);
+            border-radius: 10px;
+            padding: 1px 7px;
+            font-size: 11px;
+            margin-left: 4px;
+            flex-shrink: 0;
+        }
+        .breadcrumb-nav {
+            display: flex;
+            align-items: center;
+            color: rgba(255,255,255,.8);
+            font-size: 13px;
+            text-shadow: 0 1px 5px rgba(0,0,0,.5);
+        }
+        .breadcrumb-nav .bread-item {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background .2s;
+        }
+        .breadcrumb-nav .bread-item:hover {
+            background: rgba(255,255,255,.15);
+        }
+        .breadcrumb-nav .bread-sep {
+            margin: 0 4px;
+            color: rgba(255,255,255,.4);
+        }
+        .bm-main-area {
+            position: relative;
+            z-index: 1;
+        }
+        @media (max-width: 767.98px) {
+            .bm-sidebar { display: none; }
+        }
+    </style>
+</head>
+<body class="wp-singular page-template page-template-template page-template-bookmark page-template-templatebookmark-php page page-id-1736 wp-theme-onenav">
+    <!-- 全屏加载动画 -->
+    <div class="full-loading load-out"></div>
+
+    <!-- 背景容器 -->
+    <div class="background-container">
+        <div class="background-box">
+            <img src="" class="fit-cover wallpaper-img" alt="wallpaper">
+        </div>
+        <div class="bm-wallpaper-blur"></div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <main class="bm-content">
+        <!-- 时钟 -->
+        <div class="bm-time-box">
+            <div class="bm-time-text">
+                <span class="hh">00</span>
+                <span class="colon">:</span>
+                <span class="mm">00</span>
+                <span class="colon">:</span>
+                <span class="ss">00</span>
+            </div>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="bm-search-box my-2">
+            <div class="bm-search-container">
+                <form method="get" class="search-form" action="#" onsubmit="return false;">
+                    <div class="search-type-box">
+                        <input type="hidden" name="search_type" value="baidu">
+                        <img src="assets/search-icons/baidu.svg" alt="search" class="search-type-img img-fluid">
+                    </div>
+                    <input type="text" id="search-text" class="search-key" data-smart-tips="true" placeholder="搜索" autocomplete="off" data-status="true">
+                    <div class="search-tools">
+                        <div class="search-clear" style="display: none;"><i class="iconfont icon-close-circle"></i></div>
+                        <div class="other-tools"></div>
+                    </div>
+                </form>
+                <!-- 智能提示下拉 -->
+                <div class="card search-smart-tips blur-box" style="display: none">
+                    <ul></ul>
+                    <div class="search-smart-meta d-none d-md-flex">
+                        <span class="key"><i class="iconfont icon-enter"></i></span>
+                        <span class="label mr-4">ENTER</span>
+                        <span class="key"><i class="iconfont icon-arrow-t"></i></span>
+                        <span class="key"><i class="iconfont icon-arrow-b"></i></span>
+                        <span class="label">NAV</span>
+                    </div>
+                </div>
+                <!-- 搜索引擎切换下拉 -->
+                <div class="card search-type-dropdown blur-box"></div>
+            </div>
+        </div>
+
+    <!-- 主内容区：侧边栏 + 链接区域 -->
+    <div class="bm-main-area d-flex flex-grow-1" style="overflow:hidden;">
+        <!-- 文件夹侧边栏 -->
+        <div class="bm-sidebar" id="bm-sidebar" style="width:200px;min-width:200px;padding:10px 0;overflow-y:auto;display:flex;flex-direction:column;">
+            <div class="sidebar-header px-3 mb-2 d-flex align-items-center justify-content-between">
+                <span class="text-sm" style="color:rgba(255,255,255,.7);font-weight:600;text-shadow:0 1px 5px rgba(0,0,0,.5);">📂 分类</span>
+                <button class="btn vc-l-white btn-sm" id="btn-sidebar-new-folder" title="新建文件夹" style="padding:2px 8px;font-size:12px;">
+                    <i class="iconfont icon-add-o"></i>
+                </button>
+            </div>
+            <div id="folder-tree" class="sidebar-tree px-2 flex-grow-1"></div>
+        </div>
+        <!-- 链接轮播/页面区域 -->
+        <div class="links-carousel flex-grow-1" style="overflow:hidden;">
+            <div id="links_slides" class="io-carousel-slides" style="height:100%;overflow-y:auto;"></div>
+        </div>
+    </div>
+    </main>
+
+    <!-- 添加图标弹窗 -->
+    <div class="modal fade bm-add-icon-popup" id="bm-add-icon-popup" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-bottom">
+            <div class="modal-content">
+                <!-- 默认图标库 -->
+                <div class="default-icon-box">
+                    <div class="modal-header">
+                        <div class="icon-type-group">
+                            <div class="btn vc-l-blue show-custom-icon-box">
+                                <i class="iconfont icon-zoom-in mr-2"></i>添加自定义图标
+                            </div>
+                            <div class="btn vc-l-green show-gadget-box">
+                                <i class="iconfont icon-widgets mr-2"></i>添加小组件
+                            </div>
+                        </div>
+                        <button type="button" class="close p-r" data-dismiss="modal">
+                            <i class="iconfont icon-close"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="sidebar-box mb-3">
+                            <form class="search-form">
+                                <input type="search" class="form-control search-input" placeholder="搜索">
+                            </form>
+                        </div>
+                        <div class="icon-tab-box no-scrollbar">
+                            <div class="icon-tab-item" data-id="hot" data-type="bm">热门</div>
+                            <div class="icon-tab-item" data-id="1" data-type="bm">默认</div>
+                            <!-- 更多分类由 JS 动态生成 -->
+                        </div>
+                        <div class="icon-tab-content-box"></div>
+                    </div>
+                </div>
+
+                <!-- 自定义图标面板 -->
+                <div class="custom-icon-box">
+                    <div class="modal-header">
+                        <div class="btn btn-sm hide-custom-icon-box">
+                            <i class="iconfont icon-arrow-l mr-2"></i>返回
+                        </div>
+                        <div class="btn add-icon-btn px-4 vc-l-blue btn-sm btn-outline">保存</div>
+                    </div>
+                    <div class="modal-body">
+                        <form class="dependency-box">
+                            <div class="mb-3 form-group form-type-textarea" id="field-link-url">
+                                <textarea class="form-control" id="link-url" name="link-url" placeholder="链接地址" required="1" autocomplete="off" rows="2"></textarea>
+                            </div>
+                            <div class="mb-3 form-group form-type-group d-flex align-items-center" id="field-">
+                                <div class="mb-3 form-group form-type-text w-100 mr-3" id="field-link-name">
+                                    <input type="text" class="form-control" id="link-name" name="link-name" placeholder="链接名称" value="" required="1" autocomplete="off">
+                                </div>
+                                <div class="mb-3 form-group form-type-checkbox checkbox-btn btn vc-l-violet btn-outline" id="field-link-app">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="link-app" name="link-app" value="">
+                                        <label class="form-check-label" for="link-app">窗口内打开</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 form-group form-type-btn-group" id="field-icon-type">
+                                <div class="btn-group" role="group" id="icon-type">
+                                    <input type="radio" class="btn-check" name="icon-type" id="online-icon" value="online-icon" checked>
+                                    <label class="btn" for="online-icon">在线图标</label>
+                                    <input type="radio" class="btn-check" name="icon-type" id="upload-icon" value="upload-icon">
+                                    <label class="btn" for="upload-icon">上传图标</label>
+                                    <input type="radio" class="btn-check" name="icon-type" id="color-icon" value="color-icon">
+                                    <label class="btn" for="color-icon">纯色图标</label>
+                                    <input type="radio" class="btn-check" name="icon-type" id="link-icon" value="link-icon">
+                                    <label class="btn" for="link-icon">链接图标</label>
+                                </div>
+                            </div>
+                            <!-- 纯色图标设置 -->
+                            <div class="mb-3 form-group form-type-group icon-set-box" id="field-" data-controller="icon-type" data-condition="==" data-value="color-icon">
+                                <div class="mb-3 form-group form-type-content d-flex justify-content-center" id="field-">
+                                    <div class="icon-preview-img color-img-box">
+                                        <div class="color-preview-img input-color-out">O</div>
+                                    </div>
+                                </div>
+                                <div class="mb-3 form-group form-type-palette" id="field-preview-palette">
+                                    <div class="color-palette img-editor-background" id="preview-palette">
+                                        <div class="color-item" data-color="#54EAD0"><div class="color-item-inner" style="background-color: #54EAD0"></div></div>
+                                        <div class="color-item" data-color="#444444"><div class="color-item-inner" style="background-color: #444444"></div></div>
+                                        <div class="color-item" data-color="#000000"><div class="color-item-inner" style="background-color: #000000"></div></div>
+                                        <div class="color-item" data-color="#F4AB12"><div class="color-item-inner" style="background-color: #F4AB12"></div></div>
+                                        <div class="color-item" data-color="#4AC55C"><div class="color-item-inner" style="background-color: #4AC55C"></div></div>
+                                        <div class="color-item" data-color="#23CFA8"><div class="color-item-inner" style="background-color: #23CFA8"></div></div>
+                                        <div class="color-item" data-color="#4385F1"><div class="color-item-inner" style="background-color: #4385F1"></div></div>
+                                        <div class="color-item" data-color="#3864FF"><div class="color-item-inner" style="background-color: #3864FF"></div></div>
+                                        <div class="color-item" data-color="#7621F9"><div class="color-item-inner" style="background-color: #7621F9"></div></div>
+                                        <div class="color-item" data-color="#E04E96"><div class="color-item-inner" style="background-color: #E04E96"></div></div>
+                                        <div class="color-item" data-color="#E04E4E"><div class="color-item-inner" style="background-color: #E04E4E"></div></div>
+                                        <div class="color-item" data-color="#FD5A5A"><div class="color-item-inner" style="background-color: #FD5A5A"></div></div>
+                                        <div class="color-item" data-color="#B7A396"><div class="color-item-inner" style="background-color: #B7A396"></div></div>
+                                        <div class="color-item" data-color="#AB8383"><div class="color-item-inner" style="background-color: #AB8383"></div></div>
+                                        <div class="color-item" data-color="#B69687"><div class="color-item-inner" style="background-color: #B69687"></div></div>
+                                        <div class="color-item" data-color="#6D835F"><div class="color-item-inner" style="background-color: #6D835F"></div></div>
+                                        <div class="color-item" data-color="#7DAB88"><div class="color-item-inner" style="background-color: #7DAB88"></div></div>
+                                        <div class="color-item" data-color="#9EACAF"><div class="color-item-inner" style="background-color: #9EACAF"></div></div>
+                                        <div class="color-item" data-color="#677CAA"><div class="color-item-inner" style="background-color: #677CAA"></div></div>
+                                        <label class="cropper-background-color">
+                                            <input type="color" class="background-color-input" value="#000000">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3 form-group form-type-content" id="field-">
+                                    <input type="text" class="form-control color-icon-name" placeholder="图标文字，建议1-2个字符" value="">
+                                </div>
+                            </div>
+                            <!-- 链接图标设置 -->
+                            <div class="mb-3 form-group form-type-group icon-set-box" id="field-" data-controller="icon-type" data-condition="==" data-value="link-icon">
+                                <div class="mb-3 form-group form-type-content d-flex justify-content-center" id="field-">
+                                    <div class="icon-preview-img link-img-box"></div>
+                                </div>
+                                <div class="mb-3 form-group form-type-palette" id="field-preview-palette">
+                                    <div class="color-palette img-editor-background" id="preview-palette">
+                                        <div class="color-item" data-color="#FFFFFF"><div class="color-item-inner" style="background-color: #FFFFFF"></div></div>
+                                        <div class="color-item" data-color="#444444"><div class="color-item-inner" style="background-color: #444444"></div></div>
+                                        <div class="color-item" data-color="#000000"><div class="color-item-inner" style="background-color: #000000"></div></div>
+                                        <div class="color-item" data-color="#F4AB12"><div class="color-item-inner" style="background-color: #F4AB12"></div></div>
+                                        <div class="color-item" data-color="#4AC55C"><div class="color-item-inner" style="background-color: #4AC55C"></div></div>
+                                        <div class="color-item" data-color="#23CFA8"><div class="color-item-inner" style="background-color: #23CFA8"></div></div>
+                                        <div class="color-item" data-color="#4385F1"><div class="color-item-inner" style="background-color: #4385F1"></div></div>
+                                        <div class="color-item" data-color="#3864FF"><div class="color-item-inner" style="background-color: #3864FF"></div></div>
+                                        <div class="color-item" data-color="#7621F9"><div class="color-item-inner" style="background-color: #7621F9"></div></div>
+                                        <div class="color-item" data-color="#E04E96"><div class="color-item-inner" style="background-color: #E04E96"></div></div>
+                                        <div class="color-item" data-color="#E04E4E"><div class="color-item-inner" style="background-color: #E04E4E"></div></div>
+                                        <div class="color-item" data-color="#FD5A5A"><div class="color-item-inner" style="background-color: #FD5A5A"></div></div>
+                                        <div class="color-item" data-color="#B7A396"><div class="color-item-inner" style="background-color: #B7A396"></div></div>
+                                        <div class="color-item" data-color="#AB8383"><div class="color-item-inner" style="background-color: #AB8383"></div></div>
+                                        <div class="color-item" data-color="#B69687"><div class="color-item-inner" style="background-color: #B69687"></div></div>
+                                        <div class="color-item" data-color="#6D835F"><div class="color-item-inner" style="background-color: #6D835F"></div></div>
+                                        <div class="color-item" data-color="#7DAB88"><div class="color-item-inner" style="background-color: #7DAB88"></div></div>
+                                        <div class="color-item" data-color="#9EACAF"><div class="color-item-inner" style="background-color: #9EACAF"></div></div>
+                                        <div class="color-item" data-color="#677CAA"><div class="color-item-inner" style="background-color: #677CAA"></div></div>
+                                        <label class="cropper-background-color">
+                                            <input type="color" class="background-color-input" value="#000000">
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3 form-group form-type-content" id="field-">
+                                    <input type="text" class="form-control link-icon-url" placeholder="图标地址" value="">
+                                </div>
+                            </div>
+                            <!-- 在线图标设置 -->
+                            <div class="mb-3 form-group form-type-group icon-set-box" id="field-" data-controller="icon-type" data-condition="==" data-value="online-icon">
+                                <div class="mb-3 form-group form-type-content" id="field-">
+                                    <div class="online-preview-group">
+                                        <div class="text-muted text-sm text-center py-4">输入链接地址后自动获取图标<br>可能获取不到图标，请手动上传</div>
+                                    </div>
+                                    <input type="file" accept="image/*" class="online-img-input">
+                                </div>
+                            </div>
+                            <!-- 上传图标设置 -->
+                            <div class="mb-3 form-group form-type-group icon-set-box" id="field-" data-controller="icon-type" data-condition="==" data-value="upload-icon">
+                                <div class="mb-3 form-group form-type-content d-flex justify-content-center" id="field-">
+                                    <div class="upload-preview-group">
+                                        <div class="icon-preview-img upload-img-box">
+                                            <i class="iconfont icon-add-o p-r"></i>
+                                            <input type="file" accept="image/*" class="upload-img-input">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-end">
+                                <input type="hidden" name="icon-id" value="">
+                                <input type="hidden" name="link-color" value="">
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 小组件面板 -->
+                <div class="add-gadget-box">
+                    <div class="modal-header">
+                        <div class="btn btn-sm hide-add-gadget-box">
+                            <i class="iconfont icon-arrow-l mr-2"></i>返回
+                        </div>
+                        <div class="btn add-setting-gadget-btn vc-l-gray btn-sm btn-outline">添加设置图标</div>
+                    </div>
+                    <div class="modal-body">
+                        <div class="gadget-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录弹窗 -->
+    <div class="modal fade bm-login-modal">
+        <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-header text-center">
+                    <h5 class="modal-title text-md mx-auto">登录</h5>
+                    <div class="close" data-dismiss="modal"><i class="iconfont"></i></div>
+                </div>
+                <div class="modal-body">
+                    <div class="tips-box btn-block text-md vc-l-blue"><i class="iconfont icon-info mr-2"></i>登陆体验完整功能</div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" class="btn btn-block vc-theme btn-shadow login-btn">登录</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="bm-menu" id="context-menu" style="display:none;"></div>
+
+    <!-- 文件夹视图 -->
+    <div class="folder-box" id="folder-box">
+        <div class="folder-name"><div class="input-name"><input type="text" class="folder-title-input" value="" placeholder="文件夹名称"></div></div>
+        <div class="folder-modal no-scrollbar" id="folder-modal"><div class="d-grid" id="folder-grid"></div></div>
+    </div>
+
+    <!-- 第三方库 -->
+    <script src="https://nav.iowen.cn/wp-content/plugins/iotab/assets/js/jquery.min.js"></script>
+    <script src="https://nav.iowen.cn/wp-content/plugins/iotab/assets/js/Sortable.min.js"></script>
+    <script src="https://nav.iowen.cn/wp-content/plugins/iotab/assets/js/cropper.min.js"></script>
+    <!-- 主应用脚本 -->
+    <script src="js/app.js"></script>
+</body>
+</html>
