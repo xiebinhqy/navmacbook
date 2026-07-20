@@ -157,8 +157,5 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     updateBookmark,
     removeBookmark,
     toggleFavorite,
-    fetchBookmarks,
-    createBookmark,
-    deleteBookmark,
   };
 });

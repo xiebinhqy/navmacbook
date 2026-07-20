@@ -67,6 +67,13 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     bookmarks.value.unshift(bookmark);
   }
 
+  function updateBookmark(id: string, updates: Partial<Bookmark>) {
+    const index = bookmarks.value.findIndex(b => b.id === id);
+    if (index !== -1) {
+      bookmarks.value[index] = { ...bookmarks.value[index], ...updates };
+    }
+  }
+
   function removeBookmark(id: string) {
     bookmarks.value = bookmarks.value.filter(b => b.id !== id);
   }
@@ -75,64 +82,6 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     const bookmark = bookmarks.value.find(b => b.id === id);
     if (bookmark) {
       bookmark.is_favorite = bookmark.is_favorite === 1 ? 0 : 1;
-    }
-  }
-
-  // API 调用方法
-  async function fetchBookmarks() {
-    setLoading(true);
-    try {
-      const res = await bookmarkApi.getAll();
-      setBookmarks(res.data);
-    } catch (error) {
-      console.error('Failed to fetch bookmarks:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function createBookmark(data: Partial<Bookmark>) {
-    setLoading(true);
-    try {
-      const res = await bookmarkApi.create(data);
-      addBookmark(res.data);
-      return res.data;
-    } catch (error) {
-      console.error('Failed to create bookmark:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function updateBookmark(id: string, data: Partial<Bookmark>) {
-    setLoading(true);
-    try {
-      const res = await bookmarkApi.update(id, data);
-      const index = bookmarks.value.findIndex(b => b.id === id);
-      if (index !== -1) {
-        bookmarks.value[index] = res.data;
-      }
-      return res.data;
-    } catch (error) {
-      console.error('Failed to update bookmark:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function deleteBookmark(id: string) {
-    setLoading(true);
-    try {
-      await bookmarkApi.delete(id);
-      removeBookmark(id);
-    } catch (error) {
-      console.error('Failed to delete bookmark:', error);
-      throw error;
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -157,8 +106,5 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     updateBookmark,
     removeBookmark,
     toggleFavorite,
-    fetchBookmarks,
-    createBookmark,
-    deleteBookmark,
   };
 });

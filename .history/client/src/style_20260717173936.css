@@ -166,37 +166,6 @@ code {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 0 16px;
-}
-
-/* Responsive design for bookmark app */
-@media (max-width: 768px) {
-  #app {
-    padding: 0 12px;
-  }
-  
-  h1 {
-    font-size: 32px;
-    margin: 24px 0;
-  }
-  
-  h2 {
-    font-size: 18px;
-  }
-}
-
-@media (max-width: 480px) {
-  #app {
-    padding: 0 8px;
-  }
-  
-  h1 {
-    font-size: 28px;
-  }
-  
-  h2 {
-    font-size: 16px;
-  }
 }
 
 #center {

@@ -61,7 +61,7 @@ function resetSettings() {
           <div class="setting-item">
             <label>显示时钟</label>
             <label class="switch">
-              <input type="checkbox" v-model="settingsStore.settings.showClock">
+              <input type="checkbox" v-model="settingsStore.settings.showClock" @change="updateSetting('showClock', $event.target.checked)">
               <span class="slider"></span>
             </label>
           </div>
@@ -69,14 +69,15 @@ function resetSettings() {
             <label>时钟颜色</label>
             <input 
               type="color" 
-              v-model="settingsStore.settings.clockColor"
+              v-model="settingsStore.settings.clockColor" 
+              @change="updateSetting('clockColor', ($event.target as HTMLInputElement).value)"
             />
           </div>
 
           <h3>主题</h3>
           <div class="setting-item">
             <label>主题模式</label>
-            <select v-model="settingsStore.settings.theme">
+            <select v-model="settingsStore.settings.theme" @change="updateSetting('theme', ($event.target as HTMLSelectElement).value)">
               <option value="light">浅色</option>
               <option value="dark">深色</option>
             </select>
@@ -133,21 +134,21 @@ function resetSettings() {
           <div class="setting-item">
             <label>启用搜索栏</label>
             <label class="switch">
-              <input type="checkbox" v-model="settingsStore.settings.enableSearch">
+              <input type="checkbox" v-model="settingsStore.settings.enableSearch" @change="updateSetting('enableSearch', $event.target.checked)">
               <span class="slider"></span>
             </label>
           </div>
           <div class="setting-item">
             <label>搜索建议</label>
             <label class="switch">
-              <input type="checkbox" v-model="settingsStore.settings.enableSearchSuggestion">
+              <input type="checkbox" v-model="settingsStore.settings.enableSearchSuggestion" @change="updateSetting('enableSearchSuggestion', $event.target.checked)">
               <span class="slider"></span>
             </label>
           </div>
           <div class="setting-item">
             <label>搜索历史</label>
             <label class="switch">
-              <input type="checkbox" v-model="settingsStore.settings.enableSearchHistory">
+              <input type="checkbox" v-model="settingsStore.settings.enableSearchHistory" @change="updateSetting('enableSearchHistory', $event.target.checked)">
               <span class="slider"></span>
             </label>
           </div>

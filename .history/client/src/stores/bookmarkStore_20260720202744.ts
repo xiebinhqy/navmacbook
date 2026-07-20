@@ -67,6 +67,13 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     bookmarks.value.unshift(bookmark);
   }
 
+  function updateBookmark(id: string, updates: Partial<Bookmark>) {
+    const index = bookmarks.value.findIndex(b => b.id === id);
+    if (index !== -1) {
+      bookmarks.value[index] = { ...bookmarks.value[index], ...updates };
+    }
+  }
+
   function removeBookmark(id: string) {
     bookmarks.value = bookmarks.value.filter(b => b.id !== id);
   }
@@ -157,8 +164,5 @@ export const useBookmarkStore = defineStore('bookmark', () => {
     updateBookmark,
     removeBookmark,
     toggleFavorite,
-    fetchBookmarks,
-    createBookmark,
-    deleteBookmark,
   };
 });
