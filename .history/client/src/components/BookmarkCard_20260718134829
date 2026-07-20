@@ -1,0 +1,30 @@
+<script setup lang="ts">
+import type { Bookmark } from '../types';
+const props = defineProps<{ bookmark: Bookmark }>();
+const emit = defineEmits<{ (e: 'favorite', id: string): void }>();
+function faviconUrl(bm: Bookmark): string {
+  if (bm.favicon_url) return bm.favicon_url;
+  try { return 'https://www.google.com/s2/favicons?domain=' + new URL(bm.url).hostname + '&sz=64'; } catch { return ''; }
+}
+</script>
+
+<template>
+  <div class="bm-card">
+    <a :href="bookmark.url" target="_blank" class="bm-link">
+      <div class="bm-icon"><img :src="faviconUrl(bookmark)" :alt="bookmark.name" loading="lazy"/></div>
+      <div class="bm-name">{{ bookmark.name }}</div>
+    </a>
+    <button class="fav" :class="{active: bookmark.is_favorite===1}" @click.stop="emit('favorite', bookmark.id)">{{ bookmark.is_favorite===1 ? '★' : '☆' }}</button>
+  </div>
+</template>
+
+<style scoped>
+.bm-card{display:flex;flex-direction:column;align-items:center;padding:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:12px;transition:all .3s;cursor:pointer;position:relative}
+.bm-card:hover{background:rgba(255,255,255,.15);transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.bm-link{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#fff;width:100%}
+.bm-icon{width:48px;height:48px;margin-bottom:8px}
+.bm-icon img{width:100%;height:100%;object-fit:contain}
+.bm-name{font-size:12px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;color:rgba(255,255,255,.85)}
+.fav{position:absolute;top:8px;right:8px;background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;cursor:pointer}
+.fav.active{color:#ffd700}
+</style>
